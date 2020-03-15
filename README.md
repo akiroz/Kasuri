@@ -45,3 +45,75 @@ The following project layout is recommended:
 ```
 
 A sample project could be found in the `test/` directory.
+
+### API
+
+#### `class Module`
+
+- `static defaultState`
+
+```
+static defaultState = {
+    status: "pending",
+    statusMessage: "",
+}
+```
+
+Contains common default state modules. All modules' state should include these fields:
+
+```
+FooState = {
+    ... Module.defaultState,
+    myState: 123,
+}
+```
+
+- `getState(module: string, state: string, staleMs: number = null)`
+
+Returns state value from the fabric given the module and state name.
+
+Optionally discard stale values using `staleMs`, if the state is older than
+`staleMs` milliseconds `getState()` returns `undefined`.
+
+- `subscribeState(module: string, state: string, listener: (value, oldValue) => void)`
+
+Subscribe to state changes.
+
+- `stateChange(module: string, state: string): Promise`
+
+Helper function that returns a Promise of the next state change with the new value.
+
+- `setState(update: Partial<ModuleState>)`
+
+Updates the state of this module given a map of key-value pairs to set.
+The `update` object a subset of the module's state.
+
+- `async init()`
+
+Method to be overwritten by subclasses, this is called during system initialization.
+Subclasses should set the module's `status` state in this method to `online` if it's successful.
+
+#### `class Kasuri`
+
+- `constructor(stateMap, moduleMap)`:
+
+Constructs a new system from a default state map and a module object map.
+The `init()` method of each module will be called.
+
+```
+stateMap = {
+    module1: {
+        ...Module.defaultState,
+        foo: 1,
+        bar: "hello world!"
+    },
+    module2: {
+        ...Module.defaultState,
+    }
+}
+
+moduleMap = {
+    module1: new Module1(),
+    module2: new Module2(),
+}
+```

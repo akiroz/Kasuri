@@ -30,7 +30,7 @@ type SubscriptionStore<StateMap extends ModuleStateMap> = {
     [K in keyof StateMap[M]]: Map<
       number,
       {
-        handler: (value: StateMap[M][K]) => void;
+        handler: (value: StateMap[M][K], old: StateMap[M][K]) => void;
         once?: boolean;
       }
     >;
@@ -60,6 +60,7 @@ export class Kasuri<StateMap extends ModuleStateMap> {
         keyof StateMap,
         Module<ModuleState, StateMap>
       ]) => {
+        moduleObj._kasuri = this;
         moduleObj.on("setState", update => {
           Object.entries(update).forEach(([key, value]) => {
             this.setState(module, key as any, value);
@@ -72,9 +73,7 @@ export class Kasuri<StateMap extends ModuleStateMap> {
         keyof StateMap,
         Module<ModuleState, StateMap>
       ]) => {
-        moduleObj.init().then(() => {
-          this.setState(module, "status", "online");
-        });
+        moduleObj.init();
       }
     );
   }
@@ -84,10 +83,11 @@ export class Kasuri<StateMap extends ModuleStateMap> {
     key: K,
     value: StateMap[M][K]
   ) {
+    const old = this.store[module][key];
     this.store[module][key] = { value, lastUpdate: Date.now() };
     const subMap = this.subscription[module][key];
     subMap.forEach(({ handler, once }, id) => {
-      handler(value);
+      handler(value, old.value);
       if (once) subMap.delete(id);
     });
   }
@@ -107,7 +107,7 @@ export class Kasuri<StateMap extends ModuleStateMap> {
   subscribeState<M extends keyof StateMap, K extends keyof StateMap[M]>(
     module: M,
     key: K,
-    listener: (value: StateMap[M][K]) => void,
+    listener: (value: StateMap[M][K], old: StateMap[M][K]) => void,
     once = false
   ) {
     const subMap = this.subscription[module][key];
@@ -149,7 +149,7 @@ export class Module<
   subscribeState<M extends keyof StateMap, K extends keyof StateMap[M]>(
     module: M,
     key: K,
-    listener: (value: StateMap[M][K]) => void
+    listener: (value: StateMap[M][K], old: StateMap[M][K]) => void
   ) {
     this._kasuri.subscribeState(module, key, listener);
   }
