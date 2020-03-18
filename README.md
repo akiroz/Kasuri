@@ -8,6 +8,12 @@ for complex embedded systems with a huge varity of I/O and stateful components.
 
 Inspired by modern reactive UI frameworks and memory-driven computing.
 
+### Install
+
+```
+yarn add @akiroz/kasuri
+```
+
 ### Concept
 
 ![](concept.png)
