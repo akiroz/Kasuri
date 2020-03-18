@@ -1,5 +1,7 @@
 ## Kasuri
 
+![](https://github.com/akiroz/Kasuri/workflows/Tests/badge.svg)
+
 ## !!!!! Work-In-Progress !!!!!
 
 An opinionated, type-safe, reactive, module state management framework designed
