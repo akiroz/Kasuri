@@ -150,3 +150,14 @@ Same as `module.subscribeState`.
 -   `stateChange(module: string, state: string): Promise`
 
 Same as `module.stateChange`.
+
+### Introspection
+
+The introspection server allows you to dump, subscribe and set state in the state fabric.
+
+```
+const kasuri = new Kasuri(...);
+const server = await Introspection.server({ kasuri });
+```
+
+This server is intended to be used with the CLI tool, see `$ kasuri --help` for details.

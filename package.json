@@ -1,7 +1,11 @@
 {
+    "main": "dist/kasuri.js",
+    "bin": {
+        "kasuri": "dist/kasuri"
+    },
     "scripts": {
-        "test": "ts-mocha test/index.ts",
-        "prepublish": ""
+        "test": "ts-mocha test/index.spec.ts",
+        "prepublish": "tsc && echo '#!/usr/bin/env node' | cat - dist/introspectionCLI.js > dist/kasuri && chmod +x dist/kasuri"
     },
     "devDependencies": {
         "@types/mocha": "^7.0.2",
@@ -24,5 +28,9 @@
             "pre-commit": "tsc --noEmit && pretty-quick --staged"
         }
     },
-    "dependencies": {}
+    "dependencies": {
+        "@types/argparse": "^1.0.38",
+        "argparse": "^1.0.10",
+        "split2": "^3.1.1"
+    }
 }

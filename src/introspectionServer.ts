@@ -3,10 +3,10 @@ import { Kasuri, ModuleStateMap } from "./kasuri";
 
 interface Config<T extends ModuleStateMap> {
     kasuri: Kasuri<T>;
-    port: number;
+    port?: number;
 }
 
-export default async function<T extends ModuleStateMap>(config: Config<T>) {
+export async function server<T extends ModuleStateMap>(config: Config<T>) {
     const server = http.createServer((req, res) => {
         if (req.method !== "POST") {
             res.writeHead(400).end("Invalid method");
@@ -38,13 +38,13 @@ export default async function<T extends ModuleStateMap>(config: Config<T>) {
                     Object.entries(body.update).forEach(([k, v]) => {
                         config.kasuri.setState(body.module, k as any, v);
                     });
-                    res.end("OK");
+                    res.end(JSON.stringify({ result: "ok" }));
                     break;
                 default:
                     res.writeHead(400).end("Invalid path");
             }
         });
     });
-    await new Promise(r => server.listen(config.port, r));
+    await new Promise(r => server.listen(config.port || 3018, r));
     return server;
 }

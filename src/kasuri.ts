@@ -1,4 +1,7 @@
 import { EventEmitter } from "events";
+import * as _Introspection from "./introspectionServer";
+
+export const Introspection = _Introspection;
 
 export type ModuleState = {
     status: "pending" | "online" | "offline" | "failure";
