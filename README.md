@@ -50,7 +50,7 @@ A sample project could be found in the `test/` directory.
 
 #### `class Module`
 
-- `static defaultState`
+-   `static defaultState`
 
 ```
 static defaultState = {
@@ -68,34 +68,34 @@ FooState = {
 }
 ```
 
-- `getState(module: string, state: string, staleMs: number = null)`
+-   `getState(module: string, state: string, staleMs: number = null)`
 
 Returns state value from the fabric given the module and state name.
 
 Optionally discard stale values using `staleMs`, if the state is older than
 `staleMs` milliseconds `getState()` returns `undefined`.
 
-- `subscribeState(module: string, state: string, listener: (value, oldValue) => void)`
+-   `subscribeState(module: string, state: string, listener: (value, oldValue) => void)`
 
 Subscribe to state changes.
 
-- `stateChange(module: string, state: string): Promise`
+-   `stateChange(module: string, state: string): Promise`
 
 Helper function that returns a Promise of the next state change with the new value.
 
-- `setState(update: Partial<ModuleState>)`
+-   `setState(update: Partial<ModuleState>)`
 
 Updates the state of this module given a map of key-value pairs to set.
 The `update` object a subset of the module's state.
 
-- `async init()`
+-   `async init()`
 
 Method to be overwritten by subclasses, this is called during system initialization.
 Subclasses should set the module's `status` state in this method to `online` if it's successful.
 
 #### `class Kasuri`
 
-- `constructor(stateMap, moduleMap)`:
+-   `constructor(stateMap, moduleMap)`:
 
 Constructs a new system from a default state map and a module object map.
 The `init()` method of each module will be called.
@@ -117,3 +117,34 @@ moduleMap = {
     module2: new Module2(),
 }
 ```
+
+-   `store`
+
+Global state store, contains all module state. Has the following schema:
+
+```
+{
+    moduleName: {
+        stateName: {
+            lastUpdate: number; // unix timestamp in ms
+            value: T;           // actual value of the state
+        }
+    }
+}
+```
+
+-   `setState(module: string, update: Partial<ModuleState>)`
+
+System-wide version of module's `setState`. (See `module.setState`)
+
+-   `getState(module: string, state: string, staleMs: number = null)`
+
+Same as `module.getState`.
+
+-   `subscribeState(module: string, state: string, listener: (value, oldValue) => void)`
+
+Same as `module.subscribeState`.
+
+-   `stateChange(module: string, state: string): Promise`
+
+Same as `module.stateChange`.

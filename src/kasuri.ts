@@ -56,8 +56,10 @@ export class Kasuri<StateMap extends ModuleStateMap> {
         Object.entries(moduleMap).forEach(([module, moduleObj]: [keyof StateMap, Module<ModuleState, StateMap>]) => {
             moduleObj._kasuri = this;
             moduleObj.on("setState", update => {
-                Object.entries(update).forEach(([key, value]) => {
-                    this.setState(module, key as any, value);
+                setImmediate(() => {
+                    Object.entries(update).forEach(([key, value]) => {
+                        this.setState(module, key as any, value);
+                    });
                 });
             });
         });
