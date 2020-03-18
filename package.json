@@ -1,16 +1,26 @@
 {
-  "dependencies": {
-    "@types/node": "^13.9.1"
-  },
-  "devDependencies": {
-    "husky": "^4.2.3",
-    "prettier": "^1.19.1",
-    "pretty-quick": "^2.0.1",
-    "typescript": "^3.8.3"
-  },
-  "husky": {
-    "hooks": {
-      "pre-commit": "pretty-quick --staged"
+    "scripts": {
+        "test": "ts-mocha test/index.ts",
+        "prepublish": ""
+    },
+    "devDependencies": {
+        "@types/mocha": "^7.0.2",
+        "@types/node": "^13.9.1",
+        "husky": "^4.2.3",
+        "mocha": "^7.1.1",
+        "prettier": "^1.19.1",
+        "pretty-quick": "^2.0.1",
+        "ts-mocha": "^7.0.0",
+        "typescript": "^3.8.3"
+    },
+    "prettier": {
+        "tabWidth": 4,
+        "trailingComma": "es5",
+        "printWidth": 120
+    },
+    "husky": {
+        "hooks": {
+            "pre-commit": "tsc --noEmit && pretty-quick --staged"
+        }
     }
-  }
 }

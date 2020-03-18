@@ -1,0 +1,8 @@
+{
+    "compilerOptions": {
+        "lib": ["es2018", "esnext.bigint"],
+        "esModuleInterop": true,
+        "downlevelIteration": true,
+        "outDir": "dist"
+    }
+}
