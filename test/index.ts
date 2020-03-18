@@ -1,8 +1,11 @@
 import { strict as assert } from "assert";
+import { Server } from "http";
+import axios from "axios";
 import { Kasuri } from "../src/kasuri";
 import StateMap from "./stateMap";
 import FooModule from "./foo/module";
 import BarModule from "./bar/module";
+import introspectionServer from "../src/introspectionServer";
 
 function nextCycle() {
     return new Promise(r => setImmediate(r));
@@ -76,5 +79,39 @@ describe("kasuri", () => {
         assert.equal(kasuri.getState("bar", "status"), "online");
         assert.equal(kasuri.getState("foo", "status"), "offline");
         assert.equal(kasuri.getState("foo", "statusMessage"), "foo hardware not found");
+    });
+});
+
+describe("introspection", () => {
+    let server: Server;
+    const client = axios.create({
+        method: "POST",
+        baseURL: "http://localhost:3000",
+    });
+
+    before(async () => {
+        foo = new FooModule();
+        bar = new BarModule();
+        kasuri = new Kasuri<typeof StateMap>(StateMap, { foo, bar });
+        server = await introspectionServer({ kasuri, port: 3000 });
+    });
+
+    after(() => {
+        server.close();
+    });
+
+    it("can dump state", async () => {
+        const { data: state } = await client.post("/dumpState");
+        assert.equal(state.foo.e.value, 0);
+    });
+
+    it("can set state", async () => {
+        await client.post("/setState", {
+            module: "foo",
+            update: { f: 1, g: false },
+        });
+        const { data: state } = await client.post("/dumpState");
+        assert.equal(state.foo.f.value, 1);
+        assert.equal(state.foo.g.value, false);
     });
 });

@@ -6,6 +6,7 @@
     "devDependencies": {
         "@types/mocha": "^7.0.2",
         "@types/node": "^13.9.1",
+        "axios": "^0.19.2",
         "husky": "^4.2.3",
         "mocha": "^7.1.1",
         "prettier": "^1.19.1",
@@ -22,5 +23,6 @@
         "hooks": {
             "pre-commit": "tsc --noEmit && pretty-quick --staged"
         }
-    }
+    },
+    "dependencies": {}
 }

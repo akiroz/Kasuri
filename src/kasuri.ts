@@ -1,12 +1,11 @@
 import { EventEmitter } from "events";
-import { throws } from "assert";
 
-type ModuleState = {
+export type ModuleState = {
     status: "pending" | "online" | "offline" | "failure";
     statusMessage: string;
 };
 
-type ModuleStateMap = {
+export type ModuleStateMap = {
     [module: string]: ModuleState;
 };
 
