@@ -10,6 +10,7 @@ describe("kasuri", () => {
             foo: new FooModule(),
             bar: new BarModule(),
         });
+        console.log(kasuri.store);
         assert(kasuri.getState("bar", "status") === "online");
     });
 });
