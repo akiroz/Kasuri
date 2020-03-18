@@ -1,4 +1,6 @@
 {
+    "name": "@akiroz/kasuri",
+    "version": "0.0.1",
     "main": "dist/kasuri.js",
     "bin": {
         "kasuri": "dist/kasuri"

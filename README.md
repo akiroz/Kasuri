@@ -1,8 +1,7 @@
 ## Kasuri
 
-![](https://github.com/akiroz/Kasuri/workflows/Tests/badge.svg)
-
-## !!!!! Work-In-Progress !!!!!
+![](https://github.com/akiroz/Kasuri/workflows/test/badge.svg)
+![](https://img.shields.io/npm/v/@akiroz/kasuri)
 
 An opinionated, type-safe, reactive, module state management framework designed
 for complex embedded systems with a huge varity of I/O and stateful components.
