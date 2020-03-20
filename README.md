@@ -1,5 +1,7 @@
 ## Kasuri (絣)
 
+![](logo.png)
+
 ![](https://github.com/akiroz/Kasuri/workflows/test/badge.svg)
 [![](https://img.shields.io/npm/v/@akiroz/kasuri)](https://www.npmjs.com/package/@akiroz/kasuri)
 
