@@ -3,6 +3,7 @@ import { inspect } from "util";
 import { URL } from "url";
 import { ArgumentParser } from "argparse";
 import split2 from "split2";
+import chalk from "chalk";
 
 const argParse = new ArgumentParser({
     addHelp: true,
@@ -14,13 +15,14 @@ argParse.addArgument(["-s", "--server"], {
     help: "Kasuri introspection server (default: localhost:3018)",
 });
 const subParse = argParse.addSubparsers({ dest: "command" });
+subParse.addParser("status");
 subParse.addParser("dump");
 const cmdSet = subParse.addParser("set");
-cmdSet.addArgument(["-m", "--module"], { required: true });
-cmdSet.addArgument(["-u", "--update"], { required: true, metavar: "'{ foo: 1 }'" });
+cmdSet.addArgument("module", { help: "Module name" });
+cmdSet.addArgument("update", { help: "JS Object notation (e.g. '{ foo: 1 }')" });
 const cmdSub = subParse.addParser("subscribe");
-cmdSub.addArgument(["-m", "--module"], { required: true });
-cmdSub.addArgument(["-k", "--state"], { required: true });
+cmdSub.addArgument("module", { help: "Module name" });
+cmdSub.addArgument("state", { help: "State name" });
 
 function request(server, path, data = {}) {
     return new Promise(rsov => {
@@ -37,10 +39,35 @@ function request(server, path, data = {}) {
 
 (async function main() {
     const args = argParse.parseArgs();
+
+    if (args.command === "status") {
+        const state = await request(args.server, "/dumpState");
+        const moduleList = Object.keys(state).sort();
+        const maxLen = Math.max(...moduleList.map(m => m.length));
+        moduleList.forEach(module => {
+            const {
+                status: { value: status },
+                statusMessage: { value: statusMessage },
+            } = state[module] as {
+                status: { value: string };
+                statusMessage: { value: string };
+            };
+            const style =
+                {
+                    pending: s => chalk.yellow(s),
+                    online: s => chalk.greenBright(s),
+                    offline: s => chalk.gray(s),
+                    failure: s => chalk.redBright(s),
+                }[status] || (s => s);
+            console.log(`${module.padStart(maxLen)}: ${style(status.padEnd(8)) + statusMessage}`);
+        });
+    }
+
     if (args.command === "dump") {
         const state = await request(args.server, "/dumpState");
         console.log(inspect(state, { depth: null, colors: true }));
     }
+
     if (args.command === "set") {
         const update = eval("(" + args.update + ")");
         if (typeof update !== "object") {
@@ -50,6 +77,7 @@ function request(server, path, data = {}) {
         await request(args.server, "/setState", { module: args.module, update });
         console.log("OK");
     }
+
     if (args.command === "subscribe") {
         http.request(new URL("/subscribeState", "http://" + args.server), { method: "POST" }, res => {
             res.setEncoding("utf8");
