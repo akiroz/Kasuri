@@ -176,3 +176,5 @@ const server = await Introspection.server({ kasuri });
 ```
 
 This server is intended to be used with the CLI tool, see `$ kasuri --help` for details.
+
+![](screenshot.png)
