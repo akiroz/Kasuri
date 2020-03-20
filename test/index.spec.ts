@@ -2,7 +2,7 @@ import { strict as assert } from "assert";
 import { Server } from "http";
 import axios from "axios";
 import { Kasuri, Introspection } from "../src/kasuri";
-import StateMap from "./stateMap";
+import State from "./state";
 import FooModule from "./foo/module";
 import BarModule from "./bar/module";
 
@@ -16,13 +16,13 @@ function timeout(ms) {
 
 let foo: FooModule;
 let bar: BarModule;
-let kasuri: Kasuri<typeof StateMap>;
+let kasuri: Kasuri<typeof State>;
 
 describe("module", () => {
     beforeEach(() => {
         foo = new FooModule();
         bar = new BarModule();
-        kasuri = new Kasuri<typeof StateMap>(StateMap, { foo, bar });
+        kasuri = new Kasuri<typeof State>(State, { foo, bar });
     });
 
     it("can get/set state own state", async () => {
@@ -47,6 +47,15 @@ describe("module", () => {
         assert.equal(update, "update");
     });
 
+    it("can get state last update time", async () => {
+        foo.setState({ g: "update" });
+        let lastUpdate = foo.getLastUpdate("foo", "g");
+        assert.equal(lastUpdate, 0);
+        await nextCycle();
+        lastUpdate = foo.getLastUpdate("foo", "g");
+        assert.notEqual(lastUpdate, 0);
+    });
+
     it("can subscribe to new/old state", async () => {
         foo.setState({ g: "update" });
         const [val, old] = await new Promise(r => foo.subscribeState("foo", "g", (val, old) => r([val, old])));
@@ -68,7 +77,7 @@ describe("kasuri", () => {
     beforeEach(() => {
         foo = new FooModule();
         bar = new BarModule();
-        kasuri = new Kasuri<typeof StateMap>(StateMap, { foo, bar });
+        kasuri = new Kasuri<typeof State>(State, { foo, bar });
     });
 
     it("should init module on construct", async () => {
@@ -85,14 +94,14 @@ describe("introspection", () => {
     let server: Server;
     const client = axios.create({
         method: "POST",
-        baseURL: "http://localhost:3000",
+        baseURL: "http://localhost:3018",
     });
 
     before(async () => {
         foo = new FooModule();
         bar = new BarModule();
-        kasuri = new Kasuri<typeof StateMap>(StateMap, { foo, bar });
-        server = await Introspection.server({ kasuri, port: 3000 });
+        kasuri = new Kasuri<typeof State>(State, { foo, bar });
+        server = await Introspection.server({ kasuri, port: 3018 });
     });
 
     after(() => {

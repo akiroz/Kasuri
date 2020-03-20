@@ -1,8 +1,7 @@
 import { Module } from "../../src/kasuri";
-import StateMap from "../stateMap";
-import ModuleState from "./state";
+import State from "../state";
 
-export default class extends Module<typeof ModuleState, typeof StateMap> {
+export default class extends Module<typeof State["bar"], typeof State> {
     async init() {
         this.setState({ status: "online" });
     }

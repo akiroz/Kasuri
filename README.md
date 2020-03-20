@@ -1,7 +1,7 @@
-## Kasuri
+## Kasuri (絣)
 
 ![](https://github.com/akiroz/Kasuri/workflows/test/badge.svg)
-![](https://img.shields.io/npm/v/@akiroz/kasuri)
+[![](https://img.shields.io/npm/v/@akiroz/kasuri)](https://www.npmjs.com/package/@akiroz/kasuri)
 
 An opinionated, type-safe, reactive, module state management framework designed
 for complex embedded systems with a huge varity of I/O and stateful components.
@@ -82,6 +82,10 @@ Returns state value from the fabric given the module and state name.
 Optionally discard stale values using `staleMs`, if the state is older than
 `staleMs` milliseconds `getState()` returns `undefined`.
 
+-   `getLastUpdate(module: string, state: string): number`
+
+Get state last update time as unix timestamp (milliseconds)
+
 -   `subscribeState(module: string, state: string, listener: (value, oldValue) => void)`
 
 Subscribe to state changes.
@@ -147,6 +151,10 @@ System-wide version of module's `setState`. (See `module.setState`)
 -   `getState(module: string, state: string, staleMs: number = null)`
 
 Same as `module.getState`.
+
+-   `getLastUpdate(module: string, state: string): number`
+
+Same as `module.getLastUpdate`.
 
 -   `subscribeState(module: string, state: string, listener: (value, oldValue) => void)`
 

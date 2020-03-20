@@ -92,6 +92,10 @@ export class Kasuri<StateMap extends ModuleStateMap> {
         return value;
     }
 
+    getLastUpdate<M extends keyof StateMap, K extends keyof StateMap[M]>(module: M, key: K): number {
+        return this.store[module][key].lastUpdate;
+    }
+
     subscribeState<M extends keyof StateMap, K extends keyof StateMap[M]>(
         module: M,
         key: K,
@@ -126,6 +130,10 @@ export class Module<State extends ModuleState, StateMap extends ModuleStateMap> 
         staleMs: number = null
     ): StateMap[M][K] {
         return this._kasuri.getState(module, key, staleMs);
+    }
+
+    getLastUpdate<M extends keyof StateMap, K extends keyof StateMap[M]>(module: M, key: K): number {
+        return this._kasuri.getLastUpdate(module, key);
     }
 
     subscribeState<M extends keyof StateMap, K extends keyof StateMap[M]>(
