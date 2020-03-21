@@ -84,27 +84,29 @@ Returns state value from the fabric given the module and state name.
 Optionally discard stale values using `staleMs`, if the state is older than
 `staleMs` milliseconds `getState()` returns `undefined`.
 
--   `getLastUpdate(module: string, state: string): number`
+-   `getUpdateTime(module: string, state: string): number`
 
 Get state last update time as unix timestamp (milliseconds)
 
--   `subscribeState(module: string, state: string, listener: (value, oldValue, updateTime) => void)`
+-   `subscribeState(module: string, state: string, listener: (current, previous) => void)`
 
-Subscribe to state changes.
+Subscribe to state changes. Listener takes both the current(new) and previous
+store values, both contains state `value` and `updateTime`.
 
--   `stateChange(module: string, state: string): Promise`
+-   `stateChange(module: string, state: string): Promise<{ current, previous }>`
 
-Helper function that returns a Promise of the next state change with the new value.
+Helper function that returns a Promise of the next state change with the new and
+previous `value` and `updateTime`.
 
 -   `setState(update: Partial<ModuleState>)`
 
 Updates the state of this module given a map of key-value pairs to set.
 The `update` object a subset of the module's state.
 
--   `swapState(state: string, swapFn: ({ value, lastUpdate }) => newVal)`
+-   `swapState(state: string, swapFn: ({ value, updateTime }) => newVal)`
 
 Updates the state of this module given a state name and a swap function.
-This swap function takes the state's current `value`, `lastUpdate` time and return its
+This swap function takes the state's current `value`, `updateTime` time and return its
 new value.
 
 NOTE: The swap function cannot be async.
@@ -147,7 +149,7 @@ Global state store, contains all module state. Has the following schema:
 {
     moduleName: {
         stateName: {
-            lastUpdate: number; // unix timestamp in ms
+            updateTime: number; // unix timestamp in ms
             value: T;           // actual value of the state
         }
     }
@@ -162,15 +164,15 @@ System-wide version of module's `setState`. (See `module.setState`)
 
 Same as `module.getState`.
 
--   `getLastUpdate(module: string, state: string): number`
+-   `getUpdateTime(module: string, state: string): number`
 
-Same as `module.getLastUpdate`.
+Same as `module.getUpdateTime`.
 
--   `subscribeState(module: string, state: string, listener: (value, oldValue, updateTime) => void)`
+-   `subscribeState(module: string, state: string, listener: (current, previous) => void)`
 
 Same as `module.subscribeState`.
 
--   `stateChange(module: string, state: string): Promise`
+-   `stateChange(module: string, state: string): Promise<{ current, previous }>`
 
 Same as `module.stateChange`.
 

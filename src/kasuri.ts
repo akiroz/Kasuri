@@ -12,9 +12,9 @@ export type ModuleStateMap = {
     [module: string]: ModuleState;
 };
 
-type ModuleStateStoreAttr<T> = {
+export type ModuleStateStoreAttr<T> = {
     value: T;
-    lastUpdate: number; // ms since epoch
+    updateTime: number; // ms since epoch
 };
 
 type ModuleStateStoreType<StateMap extends ModuleStateMap> = {
@@ -32,7 +32,10 @@ type SubscriptionStore<StateMap extends ModuleStateMap> = {
         [K in keyof StateMap[M]]: Map<
             number,
             {
-                handler: (value: StateMap[M][K], old: StateMap[M][K], updateTime: number) => void;
+                handler: (
+                    current: ModuleStateStoreAttr<StateMap[M][K]>,
+                    previous: ModuleStateStoreAttr<StateMap[M][K]>
+                ) => void;
                 once?: boolean;
             }
         >;
@@ -50,7 +53,7 @@ export class Kasuri<StateMap extends ModuleStateMap> {
             Object.entries(defaultState).forEach(([key, defaultValue]) => {
                 this.store[module][key] = {
                     value: defaultValue,
-                    lastUpdate: 0,
+                    updateTime: 0,
                 };
                 this.subscription[module][key] = new Map();
             });
@@ -80,13 +83,13 @@ export class Kasuri<StateMap extends ModuleStateMap> {
     }
 
     setState<M extends keyof StateMap, K extends keyof StateMap[M]>(module: M, key: K, value: StateMap[M][K]) {
-        const old = this.store[module][key];
-        const updateTime = Date.now();
-        this.store[module][key] = { value, lastUpdate: updateTime };
+        const previous = this.store[module][key];
+        const current = { value, updateTime: Date.now() };
+        this.store[module][key] = current;
         setImmediate(() => {
             const subMap = this.subscription[module][key];
             subMap.forEach(({ handler, once }, id) => {
-                handler(value, old.value, updateTime);
+                handler(current, previous);
                 if (once) subMap.delete(id);
             });
         });
@@ -97,21 +100,24 @@ export class Kasuri<StateMap extends ModuleStateMap> {
         key: K,
         staleMs: number = null
     ): StateMap[M][K] {
-        const { value, lastUpdate } = this.store[module][key];
+        const { value, updateTime } = this.store[module][key];
         if (Number.isFinite(staleMs)) {
-            return lastUpdate > Date.now() - staleMs ? value : undefined;
+            return updateTime > Date.now() - staleMs ? value : undefined;
         }
         return value;
     }
 
-    getLastUpdate<M extends keyof StateMap, K extends keyof StateMap[M]>(module: M, key: K): number {
-        return this.store[module][key].lastUpdate;
+    getUpdateTime<M extends keyof StateMap, K extends keyof StateMap[M]>(module: M, key: K): number {
+        return this.store[module][key].updateTime;
     }
 
     subscribeState<M extends keyof StateMap, K extends keyof StateMap[M]>(
         module: M,
         key: K,
-        listener: (value: StateMap[M][K], old: StateMap[M][K], updateTime: number) => void,
+        listener: (
+            current: ModuleStateStoreAttr<StateMap[M][K]>,
+            previous: ModuleStateStoreAttr<StateMap[M][K]>
+        ) => void,
         once = false
     ) {
         const subMap = this.subscription[module][key];
@@ -122,9 +128,15 @@ export class Kasuri<StateMap extends ModuleStateMap> {
         });
     }
 
-    stateChange<M extends keyof StateMap, K extends keyof StateMap[M]>(module: M, key: K): Promise<StateMap[M][K]> {
-        return new Promise(r => {
-            this.subscribeState(module, key, r, true);
+    stateChange<M extends keyof StateMap, K extends keyof StateMap[M]>(
+        module: M,
+        key: K
+    ): Promise<{
+        current: ModuleStateStoreAttr<StateMap[M][K]>;
+        previous: ModuleStateStoreAttr<StateMap[M][K]>;
+    }> {
+        return new Promise(rsov => {
+            this.subscribeState(module, key, (current, previous) => rsov({ current, previous }), true);
         });
     }
 }
@@ -144,19 +156,28 @@ export class Module<State extends ModuleState, StateMap extends ModuleStateMap> 
         return this._kasuri.getState(module, key, staleMs);
     }
 
-    getLastUpdate<M extends keyof StateMap, K extends keyof StateMap[M]>(module: M, key: K): number {
-        return this._kasuri.getLastUpdate(module, key);
+    getUpdateTime<M extends keyof StateMap, K extends keyof StateMap[M]>(module: M, key: K): number {
+        return this._kasuri.getUpdateTime(module, key);
     }
 
     subscribeState<M extends keyof StateMap, K extends keyof StateMap[M]>(
         module: M,
         key: K,
-        listener: (value: StateMap[M][K], old: StateMap[M][K], updateTime: number) => void
+        listener: (
+            current: ModuleStateStoreAttr<StateMap[M][K]>,
+            previous: ModuleStateStoreAttr<StateMap[M][K]>
+        ) => void
     ) {
         this._kasuri.subscribeState(module, key, listener);
     }
 
-    stateChange<M extends keyof StateMap, K extends keyof StateMap[M]>(module: M, key: K): Promise<StateMap[M][K]> {
+    stateChange<M extends keyof StateMap, K extends keyof StateMap[M]>(
+        module: M,
+        key: K
+    ): Promise<{
+        current: ModuleStateStoreAttr<StateMap[M][K]>;
+        previous: ModuleStateStoreAttr<StateMap[M][K]>;
+    }> {
         return this._kasuri.stateChange(module, key);
     }
 

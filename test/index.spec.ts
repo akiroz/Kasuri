@@ -1,7 +1,7 @@
 import { strict as assert } from "assert";
 import { Server } from "http";
 import axios from "axios";
-import { Kasuri, Introspection } from "../src/kasuri";
+import { Kasuri, Introspection, ModuleStateStoreAttr } from "../src/kasuri";
 import State from "./state";
 import FooModule from "./foo/module";
 import BarModule from "./bar/module";
@@ -40,38 +40,42 @@ describe("module", () => {
     });
 
     it("can listen for state change", async () => {
-        const [update] = await Promise.all([
+        const [{ current }] = await Promise.all([
             foo.stateChange("foo", "g"),
             nextCycle().then(() => foo.setState({ g: "update" })),
         ]);
-        assert.equal(update, "update");
+        assert.equal(current.value, "update");
     });
 
     it("can get state last update time", async () => {
-        let lastUpdate = foo.getLastUpdate("foo", "g");
-        assert.equal(lastUpdate, 0);
+        let updateTime = foo.getUpdateTime("foo", "g");
+        assert.equal(updateTime, 0);
         foo.setState({ g: "update" });
-        lastUpdate = foo.getLastUpdate("foo", "g");
-        assert.notEqual(lastUpdate, 0);
+        updateTime = foo.getUpdateTime("foo", "g");
+        assert.notEqual(updateTime, 0);
     });
 
     it("can subscribe to new/old state", async () => {
         const [[val, old]] = await Promise.all([
-            new Promise<[string, string]>(r => foo.subscribeState("foo", "g", (val, old) => r([val, old]))),
+            new Promise<[ModuleStateStoreAttr<string>, ModuleStateStoreAttr<string>]>(r =>
+                foo.subscribeState("foo", "g", (val, old) => r([val, old]))
+            ),
             nextCycle().then(() => foo.setState({ g: "update" })),
         ]);
-        assert.equal(old, "");
-        assert.equal(val, "update");
+        assert.equal(old.value, "");
+        assert.equal(val.value, "update");
     });
 
     it("can get update time in subscription", async () => {
         foo.setState({ g: "update" });
         await nextCycle();
-        const [[val, old, updateTime]] = await Promise.all([
-            new Promise<[string, string, number]>(r => foo.subscribeState("foo", "g", (v, o, t) => r([v, o, t]))),
+        const [[val, old]] = await Promise.all([
+            new Promise<[ModuleStateStoreAttr<string>, ModuleStateStoreAttr<string>]>(r =>
+                foo.subscribeState("foo", "g", (val, old) => r([val, old]))
+            ),
             timeout(12).then(() => foo.setState({ g: "update" })),
         ]);
-        const delay = Date.now() - updateTime;
+        const delay = Date.now() - val.updateTime;
         assert(delay < 10, `Delay: ${delay} not < 10`);
     });
 
