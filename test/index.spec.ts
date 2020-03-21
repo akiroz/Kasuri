@@ -64,6 +64,17 @@ describe("module", () => {
         assert.equal(val, "update");
     });
 
+    it("can get update time in subscription", async () => {
+        foo.setState({ g: "update" });
+        await nextCycle();
+        const [[val, old, updateTime]] = await Promise.all([
+            new Promise<[string, string, number]>(r => foo.subscribeState("foo", "g", (v, o, t) => r([v, o, t]))),
+            timeout(12).then(() => foo.setState({ g: "update" })),
+        ]);
+        const delay = Date.now() - updateTime;
+        assert(delay < 10, `Delay: ${delay} not < 10`);
+    });
+
     it("can detect stale state", async () => {
         foo.setState({ g: "update" });
         assert.equal(foo.getState("foo", "g"), "update");

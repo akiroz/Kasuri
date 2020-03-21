@@ -88,7 +88,7 @@ Optionally discard stale values using `staleMs`, if the state is older than
 
 Get state last update time as unix timestamp (milliseconds)
 
--   `subscribeState(module: string, state: string, listener: (value, oldValue) => void)`
+-   `subscribeState(module: string, state: string, listener: (value, oldValue, updateTime) => void)`
 
 Subscribe to state changes.
 
@@ -166,7 +166,7 @@ Same as `module.getState`.
 
 Same as `module.getLastUpdate`.
 
--   `subscribeState(module: string, state: string, listener: (value, oldValue) => void)`
+-   `subscribeState(module: string, state: string, listener: (value, oldValue, updateTime) => void)`
 
 Same as `module.subscribeState`.
 

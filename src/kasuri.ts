@@ -32,7 +32,7 @@ type SubscriptionStore<StateMap extends ModuleStateMap> = {
         [K in keyof StateMap[M]]: Map<
             number,
             {
-                handler: (value: StateMap[M][K], old: StateMap[M][K]) => void;
+                handler: (value: StateMap[M][K], old: StateMap[M][K], updateTime: number) => void;
                 once?: boolean;
             }
         >;
@@ -81,11 +81,12 @@ export class Kasuri<StateMap extends ModuleStateMap> {
 
     setState<M extends keyof StateMap, K extends keyof StateMap[M]>(module: M, key: K, value: StateMap[M][K]) {
         const old = this.store[module][key];
-        this.store[module][key] = { value, lastUpdate: Date.now() };
+        const updateTime = Date.now();
+        this.store[module][key] = { value, lastUpdate: updateTime };
         setImmediate(() => {
             const subMap = this.subscription[module][key];
             subMap.forEach(({ handler, once }, id) => {
-                handler(value, old.value);
+                handler(value, old.value, updateTime);
                 if (once) subMap.delete(id);
             });
         });
@@ -110,7 +111,7 @@ export class Kasuri<StateMap extends ModuleStateMap> {
     subscribeState<M extends keyof StateMap, K extends keyof StateMap[M]>(
         module: M,
         key: K,
-        listener: (value: StateMap[M][K], old: StateMap[M][K]) => void,
+        listener: (value: StateMap[M][K], old: StateMap[M][K], updateTime: number) => void,
         once = false
     ) {
         const subMap = this.subscription[module][key];
@@ -150,7 +151,7 @@ export class Module<State extends ModuleState, StateMap extends ModuleStateMap> 
     subscribeState<M extends keyof StateMap, K extends keyof StateMap[M]>(
         module: M,
         key: K,
-        listener: (value: StateMap[M][K], old: StateMap[M][K]) => void
+        listener: (value: StateMap[M][K], old: StateMap[M][K], updateTime: number) => void
     ) {
         this._kasuri.subscribeState(module, key, listener);
     }
