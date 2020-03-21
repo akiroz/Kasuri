@@ -64,6 +64,12 @@ export class Kasuri<StateMap extends ModuleStateMap> {
                     });
                 });
             });
+            moduleObj.on("swapState", ([key, swap]) => {
+                setImmediate(() => {
+                    const entry = this.store[module][key];
+                    this.setState(module, key, swap(entry));
+                });
+            });
         });
         Object.entries(moduleMap).forEach(([module, moduleObj]: [keyof StateMap, Module<ModuleState, StateMap>]) => {
             moduleObj.init();
@@ -150,6 +156,10 @@ export class Module<State extends ModuleState, StateMap extends ModuleStateMap> 
 
     setState(update: Partial<State>) {
         this.emit("setState", update);
+    }
+
+    swapState<K extends keyof State>(key: K, swap: (entry: ModuleStateStoreAttr<State[K]>) => State[K]) {
+        this.emit("swapState", [key, swap]);
     }
 
     async init() {

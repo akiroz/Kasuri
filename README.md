@@ -101,6 +101,14 @@ Helper function that returns a Promise of the next state change with the new val
 Updates the state of this module given a map of key-value pairs to set.
 The `update` object a subset of the module's state.
 
+-   `swapState(state: string, swapFn: ({ value, lastUpdate }) => newVal)`
+
+Updates the state of this module given a state name and a swap function.
+This swap function takes the state's current `value`, `lastUpdate` time and return its
+new value.
+
+NOTE: The swap function cannot be async.
+
 -   `async init()`
 
 Method to be overwritten by subclasses, this is called during system initialization.

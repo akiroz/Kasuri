@@ -71,6 +71,12 @@ describe("module", () => {
         assert.equal(foo.getState("foo", "g", 100), "update");
         assert.equal(foo.getState("foo", "g", 10), undefined);
     });
+
+    it("can swap state", async () => {
+        foo.swapState("e", ({ value }) => value + 1);
+        await nextCycle();
+        assert.equal(foo.getState("foo", "e"), 1);
+    });
 });
 
 describe("kasuri", () => {
