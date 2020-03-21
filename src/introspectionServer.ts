@@ -4,6 +4,7 @@ import { Kasuri, ModuleStateMap } from "./kasuri";
 interface Config<T extends ModuleStateMap> {
     kasuri: Kasuri<T>;
     port?: number;
+    jsonReplacer?: (key, value) => any;
 }
 
 export async function server<T extends ModuleStateMap>(config: Config<T>) {
@@ -19,7 +20,7 @@ export async function server<T extends ModuleStateMap>(config: Config<T>) {
             const body = JSON.parse(data.join("") || "{}");
             switch (req.url) {
                 case "/dumpState":
-                    res.end(JSON.stringify(config.kasuri.store));
+                    res.end(JSON.stringify(config.kasuri.store, config.jsonReplacer));
                     break;
                 case "/subscribeState":
                     if (!(body.module && body.state)) {
@@ -27,7 +28,7 @@ export async function server<T extends ModuleStateMap>(config: Config<T>) {
                         return;
                     }
                     config.kasuri.subscribeState(body.module, body.state, (value, old) => {
-                        res.write(JSON.stringify({ value, old }) + "\n");
+                        res.write(JSON.stringify({ value, old }, config.jsonReplacer) + "\n");
                     });
                     break;
                 case "/setState":
