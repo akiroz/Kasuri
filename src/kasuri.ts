@@ -58,17 +58,13 @@ export class Kasuri<StateMap extends ModuleStateMap> {
         Object.entries(moduleMap).forEach(([module, moduleObj]: [keyof StateMap, Module<ModuleState, StateMap>]) => {
             moduleObj._kasuri = this;
             moduleObj.on("setState", update => {
-                setImmediate(() => {
-                    Object.entries(update).forEach(([key, value]) => {
-                        this.setState(module, key as any, value);
-                    });
+                Object.entries(update).forEach(([key, value]) => {
+                    this.setState(module, key as any, value);
                 });
             });
             moduleObj.on("swapState", ([key, swap]) => {
-                setImmediate(() => {
-                    const entry = this.store[module][key];
-                    this.setState(module, key, swap(entry));
-                });
+                const entry = this.store[module][key];
+                this.setState(module, key, swap(entry));
             });
         });
         Object.entries(moduleMap).forEach(([module, moduleObj]: [keyof StateMap, Module<ModuleState, StateMap>]) => {
@@ -79,10 +75,12 @@ export class Kasuri<StateMap extends ModuleStateMap> {
     setState<M extends keyof StateMap, K extends keyof StateMap[M]>(module: M, key: K, value: StateMap[M][K]) {
         const old = this.store[module][key];
         this.store[module][key] = { value, lastUpdate: Date.now() };
-        const subMap = this.subscription[module][key];
-        subMap.forEach(({ handler, once }, id) => {
-            handler(value, old.value);
-            if (once) subMap.delete(id);
+        setImmediate(() => {
+            const subMap = this.subscription[module][key];
+            subMap.forEach(({ handler, once }, id) => {
+                handler(value, old.value);
+                if (once) subMap.delete(id);
+            });
         });
     }
 
