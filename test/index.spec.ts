@@ -86,9 +86,13 @@ describe("kasuri", () => {
     });
 
     it("should init module on construct", async () => {
+        await nextCycle();
         assert.equal(kasuri.getState("bar", "status"), "online");
-        assert.equal(kasuri.getState("foo", "status"), "offline");
-        assert.equal(kasuri.getState("foo", "statusMessage"), "foo hardware not found");
+    });
+
+    it("should catch module init errors", async () => {
+        await nextCycle();
+        assert.equal(kasuri.getState("foo", "status"), "failure");
     });
 });
 

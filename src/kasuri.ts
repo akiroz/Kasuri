@@ -67,9 +67,16 @@ export class Kasuri<StateMap extends ModuleStateMap> {
                 this.setState(module, key, swap(entry));
             });
         });
-        Object.entries(moduleMap).forEach(([module, moduleObj]: [keyof StateMap, Module<ModuleState, StateMap>]) => {
-            moduleObj.init();
-        });
+        Object.entries(moduleMap).forEach(
+            async ([module, moduleObj]: [keyof StateMap, Module<ModuleState, StateMap>]) => {
+                try {
+                    await moduleObj.init();
+                } catch (err) {
+                    this.setState(module, "status", "failure");
+                    this.setState(module, "statusMessage", "Init Error: " + String(err));
+                }
+            }
+        );
     }
 
     setState<M extends keyof StateMap, K extends keyof StateMap[M]>(module: M, key: K, value: StateMap[M][K]) {
