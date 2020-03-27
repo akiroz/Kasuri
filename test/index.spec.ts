@@ -66,6 +66,17 @@ describe("module", () => {
         assert.equal(val.value, "update");
     });
 
+    it("should call listener multiple times", async () => {
+        const changes = [];
+        foo.subscribeState("foo", "e", ({ value }, { value: old }) => changes.push({ value, old }));
+        foo.swapState("e", ({ value }) => value + 1);
+        foo.swapState("e", ({ value }) => value + 1);
+        await nextCycle();
+        assert.equal(changes.length, 2);
+        assert.deepEqual(changes[0], { value: 1, old: 0 });
+        assert.deepEqual(changes[1], { value: 2, old: 1 });
+    });
+
     it("can get update time in subscription", async () => {
         foo.setState({ g: "update" });
         await nextCycle();

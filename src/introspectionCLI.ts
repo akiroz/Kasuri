@@ -82,7 +82,8 @@ function request(server, path, data = {}) {
     if (args.command === "subscribe") {
         http.request(new URL("/subscribeState", "http://" + args.server), { method: "POST" }, res => {
             res.setEncoding("utf8");
-            res.pipe(split2()).on("data", ({ curr, prev }) => {
+            res.pipe(split2()).on("data", msg => {
+                const { curr, prev } = JSON.parse(msg);
                 console.log(new Date(curr.updateTime), inspect(curr.value, { depth: null, colors: true }));
             });
         }).end(JSON.stringify({ module: args.module, state: args.state }));
