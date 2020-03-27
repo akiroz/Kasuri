@@ -40,7 +40,44 @@ system: {
 }
 ```
 
-### Project Structuring
+### Motivation
+
+This project was developed for the specific needs of complex embedded systems with dozens of hardware
+integrations (e.g. sensors, actuators, network devices, displays etc...). Several existing solutions have been
+evaluated / used in the past: 
+
+- **ROS (Robot Operating System)** - A distributed computing framework written in Python/C++ designed for robots.
+    Provides node discovery, pub/sub and RPC infrastructures. No predefined execution model / IO handling.
+    This option was rejected because:
+    
+    - ROS is tied to a specific version of Ubuntu
+    - Concurrency in Python/C++ is hard
+    - Computation power is limited on my hardware
+        
+- **Erlang OTP** - The language runtime for Erlang/Elixir with built-in support for CSP concurrency, distributed node
+    clustering, IO / compute scheduling, external monitoring, and a database. A solid choice for the job, however
+    the diversity of 3rd-party libraries and availability of developers loses out when compared to more popular languages.
+
+- **NodeJS + Redux** - The language runtime for Javascript with built-in support for event-based concurrency,
+    IO / compute scheduling + a state management framework originally designed for UI programming with external tools for
+    system introspection. NodeJS is a suitable runtime for the application, however, redux is way too complicated and
+    redux-devtools often hang or crash when there's hundreds / thousands of actions per second.
+
+Thus, Kasuri aims to be a simpler version of Redux for embedded systems.
+
+### Note on State Mutability
+
+It it worth noting that careful attention must be taken when using state values that aren't just simple values
+(e.g. arrays, nested objects). If the state is updated via mutation of the previous state, object references will
+not be updated causing the state subscription API to return the same value for both current and previous state.
+
+In order to get correct values for the subscription API, a new object must be created if your new value depends
+on the previous. The use of immutable data structures is highly recommended. [Immer][] is a good choice for creating
+immutable objects from mutations of previous state.
+
+[Immer]: https://immerjs.github.io/immer
+
+# Project Structuring
 
 The following project layout is recommended:
 
