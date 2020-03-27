@@ -16,7 +16,8 @@ argParse.addArgument(["-s", "--server"], {
 });
 const subParse = argParse.addSubparsers({ dest: "command" });
 subParse.addParser("status");
-subParse.addParser("dump");
+const cmdDump = subParse.addParser("dump");
+cmdDump.addArgument(["module"], { help: "Module name" });
 const cmdSet = subParse.addParser("set");
 cmdSet.addArgument("module", { help: "Module name" });
 cmdSet.addArgument("update", { help: "JS Object notation (e.g. '{ foo: 1 }')" });
@@ -65,7 +66,7 @@ function request(server, path, data = {}) {
 
     if (args.command === "dump") {
         const state = await request(args.server, "/dumpState");
-        console.log(inspect(state, { depth: null, colors: true }));
+        console.log(inspect(args.module ? state[args.module] : state, { depth: null, colors: true }));
     }
 
     if (args.command === "set") {
@@ -81,8 +82,8 @@ function request(server, path, data = {}) {
     if (args.command === "subscribe") {
         http.request(new URL("/subscribeState", "http://" + args.server), { method: "POST" }, res => {
             res.setEncoding("utf8");
-            res.pipe(split2()).on("data", msg => {
-                console.log(msg);
+            res.pipe(split2()).on("data", ({ curr, prev }) => {
+                console.log(new Date(curr.updateTime), inspect(curr.value, { depth: null, colors: true }));
             });
         }).end(JSON.stringify({ module: args.module, state: args.state }));
     }

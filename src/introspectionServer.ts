@@ -27,8 +27,8 @@ export async function server<T extends ModuleStateMap>(config: Config<T>) {
                         res.writeHead(400).end("Invalid params");
                         return;
                     }
-                    config.kasuri.subscribeState(body.module, body.state, (value, old) => {
-                        res.write(JSON.stringify({ value, old }, config.jsonReplacer) + "\n");
+                    config.kasuri.subscribeState(body.module, body.state, (curr, prev) => {
+                        res.write(JSON.stringify({ curr, prev }, config.jsonReplacer) + "\n");
                     });
                     break;
                 case "/setState":
