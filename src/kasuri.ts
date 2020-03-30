@@ -27,35 +27,18 @@ type ModuleMap<StateMap extends ModuleStateMap> = {
     [M in keyof StateMap]: Module<StateMap[M], StateMap>;
 };
 
-type SubscriptionStore<StateMap extends ModuleStateMap> = {
-    [M in keyof StateMap]: {
-        [K in keyof StateMap[M]]: Map<
-            number,
-            {
-                handler: (
-                    current: ModuleStateStoreAttr<StateMap[M][K]>,
-                    previous: ModuleStateStoreAttr<StateMap[M][K]>
-                ) => void;
-                once?: boolean;
-            }
-        >;
-    };
-};
-
 export class Kasuri<StateMap extends ModuleStateMap> {
     store: ModuleStateStoreType<StateMap> = {} as any;
-    subscription: SubscriptionStore<StateMap> = {} as any;
+    subscription = new EventEmitter();
 
     constructor(stateMap: StateMap, moduleMap: ModuleMap<StateMap>) {
         Object.entries(stateMap).forEach(([module, defaultState]: [keyof StateMap, ModuleState]) => {
             this.store[module] = {} as any;
-            this.subscription[module] = {} as any;
             Object.entries(defaultState).forEach(([key, defaultValue]) => {
                 this.store[module][key] = {
                     value: defaultValue,
                     updateTime: 0,
                 };
-                this.subscription[module][key] = new Map();
             });
         });
         Object.entries(moduleMap).forEach(([module, moduleObj]: [keyof StateMap, Module<ModuleState, StateMap>]) => {
@@ -97,11 +80,7 @@ export class Kasuri<StateMap extends ModuleStateMap> {
         const current = { value, updateTime: Date.now() };
         this.store[module][key] = current;
         setImmediate(() => {
-            const subMap = this.subscription[module][key];
-            subMap.forEach(({ handler, once }, id) => {
-                handler(current, previous);
-                if (once) subMap.delete(id);
-            });
+            this.subscription.emit(`${module}.${key}`, { current, previous });
         });
     }
 
@@ -130,12 +109,11 @@ export class Kasuri<StateMap extends ModuleStateMap> {
         ) => void,
         once = false
     ) {
-        const subMap = this.subscription[module][key];
-        const maxKey = Math.max(...subMap.keys());
-        subMap.set(maxKey + 1, {
-            handler: listener,
-            once,
-        });
+        if (once) {
+            this.subscription.once(`${module}.${key}`, ({ current, previous }) => listener(current, previous));
+        } else {
+            this.subscription.on(`${module}.${key}`, ({ current, previous }) => listener(current, previous));
+        }
     }
 
     stateChange<M extends keyof StateMap, K extends keyof StateMap[M]>(
