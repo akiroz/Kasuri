@@ -11,6 +11,13 @@ setInterval(() => {
     bar.setState({ b: { x: Math.random(), y: Math.random() } });
 }, 1000);
 
-Introspection.server({ kasuri }).then(server => {
+Introspection.server({
+    kasuri,
+    extension: {
+        echo(input: Buffer) {
+            return input;
+        },
+    },
+}).then(server => {
     console.log("Kasuri introspection server listening on port 3018");
 });

@@ -133,7 +133,13 @@ describe("introspection", () => {
         foo = new FooModule();
         bar = new BarModule();
         kasuri = new Kasuri<typeof State>(State, { foo, bar });
-        server = await Introspection.server({ kasuri, port: 3018 });
+        server = await Introspection.server({
+            kasuri,
+            port: 3018,
+            extension: {
+                echo: (input: Buffer) => input,
+            },
+        });
     });
 
     after(() => {
@@ -153,5 +159,19 @@ describe("introspection", () => {
         const { data: state } = await client.post("/dumpState");
         assert.equal(state.foo.f.value, 1);
         assert.equal(state.foo.g.value, false);
+    });
+
+    it("can call extensions", async () => {
+        const input = Buffer.from([1, 2, 3]);
+        const { data } = await client.post("/call/echo", input, { responseType: "arraybuffer" });
+        assert.deepEqual(data, input);
+    });
+
+    it("rejects unknown extensions", async () => {
+        try {
+            await client.post("/call/non-existent");
+        } catch (err) {
+            assert.equal(err.response.status, 400);
+        }
     });
 });

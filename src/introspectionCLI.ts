@@ -25,6 +25,8 @@ cmdSet.addArgument("update", { help: "JS Object notation (e.g. '{ foo: 1 }')" })
 const cmdSub = subParse.addParser("subscribe");
 cmdSub.addArgument("module", { help: "Module name" });
 cmdSub.addArgument("state", { help: "State name" });
+const cmdCall = subParse.addParser("call");
+cmdCall.addArgument("extension", { help: "Extension name" });
 
 function request(server, path, data = {}) {
     return new Promise(rsov => {
@@ -97,5 +99,17 @@ function request(server, path, data = {}) {
                 );
             });
         }).end(JSON.stringify({ module: args.module, state: args.state }));
+    }
+
+    if (args.command === "call") {
+        const req = http.request(
+            new URL(`/call/${args.extension}`, "http://" + args.server),
+            { method: "POST" },
+            res => {
+                res.pipe(process.stdout);
+            }
+        );
+        if (process.stdin.isTTY) req.end();
+        else process.stdin.pipe(req);
     }
 })();
