@@ -29,9 +29,11 @@ type ModuleMap<StateMap extends ModuleStateMap> = {
 
 export class Kasuri<StateMap extends ModuleStateMap> {
     store: ModuleStateStoreType<StateMap> = {} as any;
+    module: ModuleMap<StateMap>;
     subscription = new EventEmitter();
 
     constructor(stateMap: StateMap, moduleMap: ModuleMap<StateMap>) {
+        this.module = moduleMap;
         Object.entries(stateMap).forEach(([module, defaultState]: [keyof StateMap, ModuleState]) => {
             this.store[module] = {} as any;
             Object.entries(defaultState).forEach(([key, defaultValue]) => {

@@ -5,7 +5,7 @@ interface Config<T extends ModuleStateMap> {
     kasuri: Kasuri<T>;
     port?: number;
     jsonReplacer?: (key, value) => any;
-    extension?: { [name: string]: (req: Buffer) => Buffer };
+    extension?: { [name: string]: (kasuri: Kasuri<T>, req: Buffer) => Promise<Buffer> };
 }
 
 export async function server<T extends ModuleStateMap>(config: Config<T>) {
@@ -16,12 +16,12 @@ export async function server<T extends ModuleStateMap>(config: Config<T>) {
         }
         const data = [];
         req.on("data", chunk => data.push(chunk));
-        req.on("end", () => {
+        req.on("end", async () => {
             if (req.url.startsWith("/call")) {
                 const body = Buffer.concat(data);
                 const [url, extension] = req.url.match(/^\/call\/(.+)$/);
                 if (config.extension && config.extension[extension]) {
-                    res.end(config.extension[extension](body));
+                    res.end(await config.extension[extension](config.kasuri, body));
                 } else {
                     res.writeHead(400).end("Invalid extension\n");
                 }

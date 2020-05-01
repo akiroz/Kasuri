@@ -14,7 +14,7 @@ setInterval(() => {
 Introspection.server({
     kasuri,
     extension: {
-        echo(input: Buffer) {
+        async echo(kasuri, input) {
             return input;
         },
     },

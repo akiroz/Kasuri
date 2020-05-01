@@ -137,7 +137,9 @@ describe("introspection", () => {
             kasuri,
             port: 3018,
             extension: {
-                echo: (input: Buffer) => input,
+                async echo(kasuri, input) {
+                    return input;
+                },
             },
         });
     });
