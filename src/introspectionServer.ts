@@ -10,6 +10,15 @@ interface Config<T extends ModuleStateMap> {
 
 export async function server<T extends ModuleStateMap>(config: Config<T>) {
     const server = http.createServer((req, res) => {
+        if (req.method === "OPTIONS") {
+            res.writeHead(204, {
+                Connection: "keep-alive",
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Methods": "POST",
+                "Access-Control-Max-Age": "86400",
+            }).end();
+            return;
+        }
         if (req.method !== "POST") {
             res.writeHead(400).end("Invalid method");
             return;
@@ -30,7 +39,9 @@ export async function server<T extends ModuleStateMap>(config: Config<T>) {
                 const body = JSON.parse(json || "{}");
                 switch (req.url) {
                     case "/dumpState":
-                        res.end(JSON.stringify(config.kasuri.store, config.jsonReplacer));
+                        res.writeHead(200, {
+                            "Access-Control-Allow-Origin": "*",
+                        }).end(JSON.stringify(config.kasuri.store, config.jsonReplacer));
                         break;
                     case "/subscribeState":
                         if (!(body.module && body.state)) {
