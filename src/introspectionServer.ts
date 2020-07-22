@@ -68,6 +68,6 @@ export async function server<T extends ModuleStateMap>(config: Config<T>) {
             }
         });
     });
-    await new Promise(r => server.listen(config.port || 3018, r));
+    await new Promise(r => server.listen(config.port || process.env["KASURI_SERVER_PORT"] || 3018, r));
     return server;
 }
