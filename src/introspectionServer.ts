@@ -6,10 +6,19 @@ interface Config<T extends ModuleStateMap> {
     port?: number;
     jsonReplacer?: (key, value) => any;
     extension?: { [name: string]: (kasuri: Kasuri<T>, req: Buffer) => Promise<Buffer> };
+    basicAuth?: string;
 }
 
 export async function server<T extends ModuleStateMap>(config: Config<T>) {
     const server = http.createServer((req, res) => {
+        if (config.basicAuth && req.socket.localAddress !== "127.0.0.1") {
+            const auth = Buffer.from(config.basicAuth).toString("base64");
+            if (req.headers.authorization !== `Basic ${auth}`) {
+                res.writeHead(401, { "WWW-Authenticate": "Basic" }).end();
+                return;
+            }
+        }
+
         if (req.method === "OPTIONS") {
             res.writeHead(204, {
                 Connection: "keep-alive",
@@ -19,10 +28,12 @@ export async function server<T extends ModuleStateMap>(config: Config<T>) {
             }).end();
             return;
         }
+
         if (req.method !== "POST") {
             res.writeHead(400).end("Invalid method");
             return;
         }
+
         const data = [];
         req.on("data", chunk => data.push(chunk));
         req.on("end", async () => {
