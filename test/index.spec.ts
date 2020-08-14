@@ -7,11 +7,11 @@ import FooModule from "./foo/module";
 import BarModule from "./bar/module";
 
 function nextCycle() {
-    return new Promise(r => setImmediate(r));
+    return new Promise((r) => setImmediate(r));
 }
 
 function timeout(ms) {
-    return new Promise(r => setTimeout(r, ms));
+    return new Promise((r) => setTimeout(r, ms));
 }
 
 let foo: FooModule;
@@ -57,7 +57,7 @@ describe("module", () => {
 
     it("can subscribe to new/old state", async () => {
         const [[val, old]] = await Promise.all([
-            new Promise<[ModuleStateStoreAttr<string>, ModuleStateStoreAttr<string>]>(r =>
+            new Promise<[ModuleStateStoreAttr<string>, ModuleStateStoreAttr<string>]>((r) =>
                 foo.subscribeState("foo", "g", (val, old) => r([val, old]))
             ),
             nextCycle().then(() => foo.setState({ g: "update" })),
@@ -81,7 +81,7 @@ describe("module", () => {
         foo.setState({ g: "update" });
         await nextCycle();
         const [[val, old]] = await Promise.all([
-            new Promise<[ModuleStateStoreAttr<string>, ModuleStateStoreAttr<string>]>(r =>
+            new Promise<[ModuleStateStoreAttr<string>, ModuleStateStoreAttr<string>]>((r) =>
                 foo.subscribeState("foo", "g", (val, old) => r([val, old]))
             ),
             timeout(12).then(() => foo.setState({ g: "update" })),
@@ -126,7 +126,7 @@ describe("introspection", () => {
     let server: Server;
     const client = axios.create({
         method: "POST",
-        baseURL: "http://localhost:3018",
+        baseURL: "http://127.0.0.1:3018",
     });
 
     before(async () => {
@@ -141,6 +141,7 @@ describe("introspection", () => {
                     return input;
                 },
             },
+            basicAuth: "a:",
         });
     });
 

@@ -1,5 +1,6 @@
 import http from "http";
 import { Kasuri, ModuleStateMap } from "./kasuri";
+import { AddressInfo } from "net";
 
 interface Config<T extends ModuleStateMap> {
     kasuri: Kasuri<T>;
@@ -9,12 +10,17 @@ interface Config<T extends ModuleStateMap> {
     basicAuth?: string;
 }
 
+function isLocal(req: http.IncomingMessage): boolean {
+    const { family, address } = req.socket.address() as AddressInfo;
+    return (family === "IPv4" && address === "127.0.0.1") || (family === "IPv6" && address === "::ffff:127.0.0.1");
+}
+
 export async function server<T extends ModuleStateMap>(config: Config<T>) {
     const server = http.createServer((req, res) => {
-        if (config.basicAuth && req.socket.localAddress !== "127.0.0.1") {
+        if (config.basicAuth && !isLocal(req)) {
             const auth = Buffer.from(config.basicAuth).toString("base64");
             if (req.headers.authorization !== `Basic ${auth}`) {
-                res.writeHead(401, { "WWW-Authenticate": "Basic" }).end();
+                res.writeHead(401, { "WWW-Authenticate": "Basic" }).end("Unauthorized");
                 return;
             }
         }
@@ -35,7 +41,7 @@ export async function server<T extends ModuleStateMap>(config: Config<T>) {
         }
 
         const data = [];
-        req.on("data", chunk => data.push(chunk));
+        req.on("data", (chunk) => data.push(chunk));
         req.on("end", async () => {
             if (req.url.startsWith("/call")) {
                 const body = Buffer.concat(data);
@@ -79,6 +85,6 @@ export async function server<T extends ModuleStateMap>(config: Config<T>) {
             }
         });
     });
-    await new Promise(r => server.listen(config.port || process.env["KASURI_SERVER_PORT"] || 3018, r));
+    await new Promise((r) => server.listen(config.port || process.env["KASURI_SERVER_PORT"] || 3018, r));
     return server;
 }

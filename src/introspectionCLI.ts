@@ -29,13 +29,21 @@ const cmdCall = subParse.addParser("call");
 cmdCall.addArgument("extension", { help: "Extension name" });
 
 function request(server, path, data = {}) {
-    return new Promise(rsov => {
-        http.request(new URL(path, "http://" + server), { method: "POST" }, res => {
+    return new Promise((rsov, rjct) => {
+        http.request(new URL(path, "http://" + server), { method: "POST" }, (res) => {
+            if (res.statusCode !== 200) {
+                rjct(Error(`Response`));
+                return;
+            }
             const data = [];
             res.setEncoding("utf8");
-            res.on("data", chunk => data.push(chunk));
+            res.on("data", (chunk) => data.push(chunk));
             res.on("end", () => {
-                rsov(JSON.parse(data.join("")));
+                if (res.statusCode === 200) {
+                    rsov(JSON.parse(data.join("")));
+                    return;
+                }
+                rjct(Error(`${res.statusCode} ${data.join("")}`));
             });
         }).end(JSON.stringify(data));
     });
@@ -47,8 +55,8 @@ function request(server, path, data = {}) {
     if (args.command === "status") {
         const state = await request(args.server, "/dumpState");
         const moduleList = Object.keys(state).sort();
-        const maxLen = Math.max(...moduleList.map(m => m.length));
-        moduleList.forEach(module => {
+        const maxLen = Math.max(...moduleList.map((m) => m.length));
+        moduleList.forEach((module) => {
             const {
                 status: { value: status },
                 statusMessage: { value: statusMessage },
@@ -58,11 +66,11 @@ function request(server, path, data = {}) {
             };
             const style =
                 {
-                    pending: s => chalk.yellow(s),
-                    online: s => chalk.greenBright(s),
-                    offline: s => chalk.gray(s),
-                    failure: s => chalk.redBright(s),
-                }[status] || (s => s);
+                    pending: (s) => chalk.yellow(s),
+                    online: (s) => chalk.greenBright(s),
+                    offline: (s) => chalk.gray(s),
+                    failure: (s) => chalk.redBright(s),
+                }[status] || ((s) => s);
             console.log(`${module.padStart(maxLen)}: ${style(status.padEnd(8)) + statusMessage}`);
         });
     }
@@ -88,9 +96,9 @@ function request(server, path, data = {}) {
     }
 
     if (args.command === "subscribe") {
-        http.request(new URL("/subscribeState", "http://" + args.server), { method: "POST" }, res => {
+        http.request(new URL("/subscribeState", "http://" + args.server), { method: "POST" }, (res) => {
             res.setEncoding("utf8");
-            res.pipe(split2()).on("data", msg => {
+            res.pipe(split2()).on("data", (msg) => {
                 const { curr, prev } = JSON.parse(msg);
                 console.log(
                     new Date(curr.updateTime).toLocaleString("en-GB") +
@@ -105,7 +113,7 @@ function request(server, path, data = {}) {
         const req = http.request(
             new URL(`/call/${args.extension}`, "http://" + args.server),
             { method: "POST" },
-            res => {
+            (res) => {
                 res.pipe(process.stdout);
             }
         );
