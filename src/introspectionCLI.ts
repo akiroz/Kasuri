@@ -31,10 +31,6 @@ cmdCall.addArgument("extension", { help: "Extension name" });
 function request(server, path, data = {}) {
     return new Promise((rsov, rjct) => {
         http.request(new URL(path, "http://" + server), { method: "POST" }, (res) => {
-            if (res.statusCode !== 200) {
-                rjct(Error(`Response`));
-                return;
-            }
             const data = [];
             res.setEncoding("utf8");
             res.on("data", (chunk) => data.push(chunk));
