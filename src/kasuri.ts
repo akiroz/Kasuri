@@ -55,11 +55,17 @@ export class Kasuri<StateMap extends ModuleStateMap> {
                 this.setState(module, key, swap(entry));
             });
         });
+
+        const whiteList = process.env["KASURI_ENABLED_MODULES"];
+        const enabledModules = whiteList && new Set(whiteList.split(","));
         const disabledModules = new Set((process.env["KASURI_DISABLED_MODULES"] || "").split(","));
         Object.entries(moduleMap).forEach(
             async ([module, moduleObj]: [keyof StateMap, Module<ModuleState, StateMap>]) => {
                 try {
-                    if (disabledModules.has(module as string)) {
+                    if (whiteList && !enabledModules.has(module as string)) {
+                        this.setState(module, "status", "offline");
+                        this.setState(module, "statusMessage", "Disabled");
+                    } else if (disabledModules.has(module as string)) {
                         this.setState(module, "status", "offline");
                         this.setState(module, "statusMessage", "Disabled");
                     } else {
