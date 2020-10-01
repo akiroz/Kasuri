@@ -11,7 +11,7 @@ const argParse = new ArgumentParser({
 });
 argParse.addArgument(["-s", "--server"], {
     metavar: "<host>:<port>",
-    defaultValue: "localhost:3018",
+    defaultValue: process.env["KASURI_SERVER"] || "localhost:3018",
     help: "Kasuri introspection server (default: localhost:3018)",
 });
 argParse.addArgument(["-a", "--auth"], {
