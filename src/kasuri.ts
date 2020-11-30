@@ -45,7 +45,7 @@ export class Kasuri<StateMap extends ModuleStateMap> {
         });
         Object.entries(moduleMap).forEach(([module, moduleObj]: [keyof StateMap, Module<ModuleState, StateMap>]) => {
             moduleObj._kasuri = this;
-            moduleObj.on("setState", update => {
+            moduleObj.on("setState", (update) => {
                 Object.entries(update).forEach(([key, value]) => {
                     this.setState(module, key as any, value);
                 });
@@ -59,16 +59,17 @@ export class Kasuri<StateMap extends ModuleStateMap> {
         const whiteList = process.env["KASURI_ENABLED_MODULES"];
         const enabledModules = whiteList && new Set(whiteList.split(","));
         const disabledModules = new Set((process.env["KASURI_DISABLED_MODULES"] || "").split(","));
+        Object.keys(moduleMap).forEach((module: string) => {
+            if ((whiteList && !enabledModules.has(module)) || disabledModules.has(module)) {
+                this.setState(module, "status", "offline");
+                this.setState(module, "statusMessage", "Disabled");
+            }
+        });
+        // Begin module initialization
         Object.entries(moduleMap).forEach(
             async ([module, moduleObj]: [keyof StateMap, Module<ModuleState, StateMap>]) => {
                 try {
-                    if (whiteList && !enabledModules.has(module as string)) {
-                        this.setState(module, "status", "offline");
-                        this.setState(module, "statusMessage", "Disabled");
-                    } else if (disabledModules.has(module as string)) {
-                        this.setState(module, "status", "offline");
-                        this.setState(module, "statusMessage", "Disabled");
-                    } else {
+                    if (this.getState(module, "status") !== "offline") {
                         await moduleObj.init();
                     }
                 } catch (err) {
@@ -131,7 +132,7 @@ export class Kasuri<StateMap extends ModuleStateMap> {
         current: ModuleStateStoreAttr<StateMap[M][K]>;
         previous: ModuleStateStoreAttr<StateMap[M][K]>;
     }> {
-        return new Promise(rsov => {
+        return new Promise((rsov) => {
             this.subscribeState(module, key, (current, previous) => rsov({ current, previous }), true);
         });
     }
