@@ -55,10 +55,24 @@ export async function server<T extends ModuleStateMap>(config: Config<T>) {
                 const json = Buffer.concat(data).toString("utf8");
                 const body = JSON.parse(json || "{}");
                 switch (req.url) {
+                    case "/status":
+                        res.end(
+                            JSON.stringify(
+                                Object.keys(config.kasuri.store).map((module) => {
+                                    const { status, statusMessage } = config.kasuri.store[module];
+                                    return [module, status.value, statusMessage.value];
+                                })
+                            )
+                        );
                     case "/dumpState":
                         res.writeHead(200, {
                             "Access-Control-Allow-Origin": "*",
-                        }).end(JSON.stringify(config.kasuri.store, config.jsonReplacer));
+                        }).end(
+                            JSON.stringify(
+                                body.module ? config.kasuri.store[body.module] : config.kasuri.store,
+                                config.jsonReplacer
+                            )
+                        );
                         break;
                     case "/subscribeState":
                         if (!(body.module && body.state)) {
@@ -85,6 +99,6 @@ export async function server<T extends ModuleStateMap>(config: Config<T>) {
             }
         });
     });
-    await new Promise((r) => server.listen(config.port || process.env["KASURI_SERVER_PORT"] || 3018, r));
+    await new Promise<void>((r) => server.listen(config.port || process.env["KASURI_SERVER_PORT"] || 3018, r));
     return server;
 }

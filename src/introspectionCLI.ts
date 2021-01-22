@@ -47,10 +47,10 @@ function request(server, auth, path, data = {}) {
                 method: "POST",
                 headers: basicAuthHeader(auth),
             },
-            res => {
+            (res) => {
                 const data = [];
                 res.setEncoding("utf8");
-                res.on("data", chunk => data.push(chunk));
+                res.on("data", (chunk) => data.push(chunk));
                 res.on("end", () => {
                     if (res.statusCode === 200) {
                         rsov(JSON.parse(data.join("")));
@@ -67,24 +67,17 @@ function request(server, auth, path, data = {}) {
     const args = argParse.parseArgs();
 
     if (args.command === "status") {
-        const state = await request(args.server, args.auth, "/dumpState");
-        const moduleList = Object.keys(state).sort();
-        const maxLen = Math.max(...moduleList.map(m => m.length));
-        moduleList.forEach(module => {
-            const {
-                status: { value: status },
-                statusMessage: { value: statusMessage },
-            } = state[module] as {
-                status: { value: string };
-                statusMessage: { value: string };
-            };
+        const moduleList = (await request(args.server, args.auth, "/status")) as [string, string, string][];
+        moduleList.sort((a, b) => a[0].localeCompare(b[0]));
+        const maxLen = Math.max(...moduleList.map((m) => m[0].length));
+        moduleList.forEach(([module, status, statusMessage]) => {
             const style =
                 {
-                    pending: s => chalk.yellow(s),
-                    online: s => chalk.greenBright(s),
-                    offline: s => chalk.gray(s),
-                    failure: s => chalk.redBright(s),
-                }[status] || (s => s);
+                    pending: (s) => chalk.yellow(s),
+                    online: (s) => chalk.greenBright(s),
+                    offline: (s) => chalk.gray(s),
+                    failure: (s) => chalk.redBright(s),
+                }[status] || ((s) => s);
             console.log(`${module.padStart(maxLen)}: ${style(status.padEnd(8)) + statusMessage}`);
         });
     }
@@ -95,8 +88,8 @@ function request(server, auth, path, data = {}) {
     }
 
     if (args.command === "dump") {
-        const state = await request(args.server, args.auth, "/dumpState");
-        console.log(inspect(state[args.module], { depth: null, colors: true }));
+        const state = await request(args.server, args.auth, "/dumpState", { module: args.module });
+        console.log(inspect(state, { depth: null, colors: true }));
     }
 
     if (args.command === "set") {
@@ -116,9 +109,9 @@ function request(server, auth, path, data = {}) {
                 method: "POST",
                 headers: basicAuthHeader(args.auth),
             },
-            res => {
+            (res) => {
                 res.setEncoding("utf8");
-                res.pipe(split2()).on("data", msg => {
+                res.pipe(split2()).on("data", (msg) => {
                     const { curr, prev } = JSON.parse(msg);
                     console.log(
                         new Date(curr.updateTime).toLocaleString("en-GB") +
@@ -134,7 +127,7 @@ function request(server, auth, path, data = {}) {
         const req = http.request(
             new URL(`/call/${args.extension}`, "http://" + args.server),
             { method: "POST", headers: basicAuthHeader(args.auth) },
-            res => {
+            (res) => {
                 res.pipe(process.stdout);
             }
         );
