@@ -26,18 +26,17 @@ export async function server<T extends ModuleStateMap>(config: Config<T>) {
         }
 
         if (req.method === "OPTIONS") {
-            if (res.writable)
-                res.writeHead(204, {
-                    Connection: "keep-alive",
-                    "Access-Control-Allow-Origin": "*",
-                    "Access-Control-Allow-Methods": "POST",
-                    "Access-Control-Max-Age": "86400",
-                }).end();
+            res.writeHead(204, {
+                Connection: "keep-alive",
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Methods": "POST",
+                "Access-Control-Max-Age": "86400",
+            }).end();
             return;
         }
 
         if (req.method !== "POST") {
-            if (res.writable) res.writeHead(400).end("Invalid method");
+            res.writeHead(400).end("Invalid method");
             return;
         }
 
@@ -50,38 +49,37 @@ export async function server<T extends ModuleStateMap>(config: Config<T>) {
                 if (config.extension && config.extension[extension]) {
                     res.end(await config.extension[extension](config.kasuri, body));
                 } else {
-                    if (res.writable) res.writeHead(400).end("Invalid extension\n");
+                    res.writeHead(400).end("Invalid extension\n");
                 }
             } else {
                 const json = Buffer.concat(data).toString("utf8");
                 const body = JSON.parse(json || "{}");
                 switch (req.url) {
                     case "/status":
-                        if (res.writable)
-                            res.writeHead(200, {
-                                "Access-Control-Allow-Origin": "*",
-                            }).end(
-                                JSON.stringify(
-                                    Object.keys(config.kasuri.store).map((module) => {
-                                        const { status, statusMessage } = config.kasuri.store[module];
-                                        return [module, status.value, statusMessage.value];
-                                    })
-                                )
-                            );
+                        res.writeHead(200, {
+                            "Access-Control-Allow-Origin": "*",
+                        }).end(
+                            JSON.stringify(
+                                Object.keys(config.kasuri.store).map((module) => {
+                                    const { status, statusMessage } = config.kasuri.store[module];
+                                    return [module, status.value, statusMessage.value];
+                                })
+                            )
+                        );
+                        break;
                     case "/dumpState":
-                        if (res.writable)
-                            res.writeHead(200, {
-                                "Access-Control-Allow-Origin": "*",
-                            }).end(
-                                JSON.stringify(
-                                    body.module ? config.kasuri.store[body.module] : config.kasuri.store,
-                                    config.jsonReplacer
-                                )
-                            );
+                        res.writeHead(200, {
+                            "Access-Control-Allow-Origin": "*",
+                        }).end(
+                            JSON.stringify(
+                                body.module ? config.kasuri.store[body.module] : config.kasuri.store,
+                                config.jsonReplacer
+                            )
+                        );
                         break;
                     case "/subscribeState":
                         if (!(body.module && body.state)) {
-                            if (res.writable) res.writeHead(400).end("Invalid params");
+                            res.writeHead(400).end("Invalid params");
                             return;
                         }
                         config.kasuri.subscribeState(body.module, body.state, (curr, prev) => {
@@ -90,7 +88,7 @@ export async function server<T extends ModuleStateMap>(config: Config<T>) {
                         break;
                     case "/setState":
                         if (!(body.module && body.update)) {
-                            if (res.writable) res.writeHead(400).end("Invalid params");
+                            res.writeHead(400).end("Invalid params");
                             return;
                         }
                         Object.entries(body.update).forEach(([k, v]) => {
@@ -99,7 +97,7 @@ export async function server<T extends ModuleStateMap>(config: Config<T>) {
                         res.end(JSON.stringify({ result: "ok" }));
                         break;
                     default:
-                        if (res.writable) res.writeHead(400).end("Invalid path");
+                        res.writeHead(400).end("Invalid path");
                 }
             }
         });
