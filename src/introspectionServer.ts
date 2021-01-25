@@ -20,23 +20,24 @@ export async function server<T extends ModuleStateMap>(config: Config<T>) {
         if (config.basicAuth && !isLocal(req)) {
             const auth = Buffer.from(config.basicAuth).toString("base64");
             if (req.headers.authorization !== `Basic ${auth}`) {
-                res.writeHead(401, { "WWW-Authenticate": "Basic" }).end("Unauthorized");
+                if (res.writable) res.writeHead(401, { "WWW-Authenticate": "Basic" }).end("Unauthorized");
                 return;
             }
         }
 
         if (req.method === "OPTIONS") {
-            res.writeHead(204, {
-                Connection: "keep-alive",
-                "Access-Control-Allow-Origin": "*",
-                "Access-Control-Allow-Methods": "POST",
-                "Access-Control-Max-Age": "86400",
-            }).end();
+            if (res.writable)
+                res.writeHead(204, {
+                    Connection: "keep-alive",
+                    "Access-Control-Allow-Origin": "*",
+                    "Access-Control-Allow-Methods": "POST",
+                    "Access-Control-Max-Age": "86400",
+                }).end();
             return;
         }
 
         if (req.method !== "POST") {
-            res.writeHead(400).end("Invalid method");
+            if (res.writable) res.writeHead(400).end("Invalid method");
             return;
         }
 
@@ -49,36 +50,38 @@ export async function server<T extends ModuleStateMap>(config: Config<T>) {
                 if (config.extension && config.extension[extension]) {
                     res.end(await config.extension[extension](config.kasuri, body));
                 } else {
-                    res.writeHead(400).end("Invalid extension\n");
+                    if (res.writable) res.writeHead(400).end("Invalid extension\n");
                 }
             } else {
                 const json = Buffer.concat(data).toString("utf8");
                 const body = JSON.parse(json || "{}");
                 switch (req.url) {
                     case "/status":
-                        res.writeHead(200, {
-                            "Access-Control-Allow-Origin": "*",
-                        }).end(
-                            JSON.stringify(
-                                Object.keys(config.kasuri.store).map((module) => {
-                                    const { status, statusMessage } = config.kasuri.store[module];
-                                    return [module, status.value, statusMessage.value];
-                                })
-                            )
-                        );
+                        if (res.writable)
+                            res.writeHead(200, {
+                                "Access-Control-Allow-Origin": "*",
+                            }).end(
+                                JSON.stringify(
+                                    Object.keys(config.kasuri.store).map((module) => {
+                                        const { status, statusMessage } = config.kasuri.store[module];
+                                        return [module, status.value, statusMessage.value];
+                                    })
+                                )
+                            );
                     case "/dumpState":
-                        res.writeHead(200, {
-                            "Access-Control-Allow-Origin": "*",
-                        }).end(
-                            JSON.stringify(
-                                body.module ? config.kasuri.store[body.module] : config.kasuri.store,
-                                config.jsonReplacer
-                            )
-                        );
+                        if (res.writable)
+                            res.writeHead(200, {
+                                "Access-Control-Allow-Origin": "*",
+                            }).end(
+                                JSON.stringify(
+                                    body.module ? config.kasuri.store[body.module] : config.kasuri.store,
+                                    config.jsonReplacer
+                                )
+                            );
                         break;
                     case "/subscribeState":
                         if (!(body.module && body.state)) {
-                            res.writeHead(400).end("Invalid params");
+                            if (res.writable) res.writeHead(400).end("Invalid params");
                             return;
                         }
                         config.kasuri.subscribeState(body.module, body.state, (curr, prev) => {
@@ -87,7 +90,7 @@ export async function server<T extends ModuleStateMap>(config: Config<T>) {
                         break;
                     case "/setState":
                         if (!(body.module && body.update)) {
-                            res.writeHead(400).end("Invalid params");
+                            if (res.writable) res.writeHead(400).end("Invalid params");
                             return;
                         }
                         Object.entries(body.update).forEach(([k, v]) => {
@@ -96,7 +99,7 @@ export async function server<T extends ModuleStateMap>(config: Config<T>) {
                         res.end(JSON.stringify({ result: "ok" }));
                         break;
                     default:
-                        res.writeHead(400).end("Invalid path");
+                        if (res.writable) res.writeHead(400).end("Invalid path");
                 }
             }
         });
