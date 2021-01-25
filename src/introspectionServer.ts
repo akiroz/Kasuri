@@ -56,7 +56,9 @@ export async function server<T extends ModuleStateMap>(config: Config<T>) {
                 const body = JSON.parse(json || "{}");
                 switch (req.url) {
                     case "/status":
-                        res.end(
+                        res.writeHead(200, {
+                            "Access-Control-Allow-Origin": "*",
+                        }).end(
                             JSON.stringify(
                                 Object.keys(config.kasuri.store).map((module) => {
                                     const { status, statusMessage } = config.kasuri.store[module];
