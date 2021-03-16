@@ -77,7 +77,7 @@ export class Kasuri<StateMap extends ModuleStateMap> {
                     this.setState(
                         module,
                         "statusMessage",
-                        "Init Error: " + (err instanceof Error) ? err.stack : String(err)
+                        `Init Error: ${err}` + (err instanceof Error) ? `\n${err.stack}` : ""
                     );
                 }
             }
