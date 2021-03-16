@@ -1,4 +1,5 @@
 import { EventEmitter } from "events";
+import { randomBytes } from "crypto";
 import * as _Introspection from "./introspectionServer";
 
 export const Introspection = _Introspection;
@@ -26,6 +27,35 @@ type ModuleStateStoreType<StateMap extends ModuleStateMap> = {
 type ModuleMap<StateMap extends ModuleStateMap> = {
     [M in keyof StateMap]: Module<StateMap[M], StateMap>;
 };
+
+export type TaskStatus = "pending" | "active" | "success" | "failed";
+
+export type TaskRequest<Data> = {
+    id: string,
+    data: Data,
+};
+
+type TaskReqData<T> = T extends TaskRequest<infer D> ? D : never;
+
+export type TaskState<Data, Result> = {
+    keepStale: number,
+    stale: string[],
+    task: {
+        [key: string]: {
+            updateTime: number,
+            status: TaskStatus,
+            data: Data,
+            result?: Result,
+        }
+    },
+};
+
+type TaskStateData<T> = T extends TaskState<infer D, infer R> ? D : never;
+type TaskStateResult<T> = T extends TaskState<infer D, infer R> ? R : never;
+
+function taskId(): string {
+    return randomBytes(4).toString("hex");
+}
 
 export class Kasuri<StateMap extends ModuleStateMap> {
     store: ModuleStateStoreType<StateMap> = {} as any;
@@ -139,10 +169,20 @@ export class Kasuri<StateMap extends ModuleStateMap> {
 }
 
 export class Module<State extends ModuleState, StateMap extends ModuleStateMap> extends EventEmitter {
+    
     static defaultState: ModuleState = {
         status: "pending",
         statusMessage: "",
     };
+
+    static taskState<Data, Result>(config: { keepStale?: number } = {}): TaskState<Data, Result> {
+        return {
+            keepStale: config.keepStale || 5,
+            stale: [],
+            task: {},
+        };
+    }
+    
     _kasuri: Kasuri<StateMap>;
 
     getState<M extends keyof StateMap, K extends keyof StateMap[M]>(
@@ -184,6 +224,60 @@ export class Module<State extends ModuleState, StateMap extends ModuleStateMap> 
 
     swapState<K extends keyof State>(key: K, swap: (entry: ModuleStateStoreAttr<State[K]>) => State[K]) {
         this.emit("swapState", [key, swap]);
+    }
+
+    async submitTask<
+    R extends keyof State,
+    M extends keyof StateMap,
+    S extends keyof StateMap[M],
+    Data extends TaskReqData<State[R]>,
+    Data2 extends TaskStateData<StateMap[M][S]>,
+    Result extends TaskStateResult<StateMap[M][S]>
+    >(req: R, mod: M, stateKey: S, data: Data, id: string = taskId()): Promise<Result> {
+        this.setState({ [req]: { id, data } } as any);
+        while(true) {
+            const { task } = (await this.stateChange(mod, stateKey)).current.value as TaskState<Data2, Result>;
+            if (task[id] && task[id].status === "failed") throw task[id].result;
+            if (task[id] && task[id].status === "success") return task[id].result;
+        }
+    }
+
+    handleTask<
+    M extends keyof StateMap,
+    R extends keyof StateMap[M],
+    S extends keyof State,
+    Data extends TaskReqData<StateMap[M][R]>,
+    Result extends TaskStateResult<State[S]>
+    >(mod: M, req: R, stateKey: S, handler: (data: Data) => Promise<Result>) {
+        this.subscribeState(mod, req, async ({ value: { id, data } }: ModuleStateStoreAttr<TaskRequest<Data>>) => {
+            this.swapState(stateKey, (({ value: taskState }: ModuleStateStoreAttr<TaskState<Data, Result>>) => {
+                taskState.task[id] = { updateTime: Date.now(), status: "active", data };
+                return taskState;
+            }) as any);
+            try {
+                const result = await handler(data);
+                this.swapState(stateKey, (({ value: taskState }: ModuleStateStoreAttr<TaskState<Data, Result>>) => {
+                    taskState.task[id] = { updateTime: Date.now(), status: "success", data, result };
+                    taskState.stale.push(id);
+                    while(taskState.stale.length > Math.max(0, taskState.keepStale)) {
+                        delete taskState.task[taskState.stale.shift()];
+                    }
+                    return taskState;
+                }) as any);
+            } catch(err) {
+                this.swapState(stateKey, (({ value: taskState }: ModuleStateStoreAttr<TaskState<Data, Result>>) => {
+                    taskState.task[id] = {
+                        updateTime: Date.now(), status: "failed", data,
+                        result: err instanceof Error ? err.message : err,
+                    };
+                    taskState.stale.push(id);
+                    while(taskState.stale.length > Math.max(0, taskState.keepStale)) {
+                        delete taskState.task[taskState.stale.shift()];
+                    }
+                    return taskState;
+                }) as any);
+            }
+        });
     }
 
     async init() {

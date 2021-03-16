@@ -122,6 +122,50 @@ describe("kasuri", () => {
     });
 });
 
+describe("task", () => {
+    beforeEach(() => {
+        foo = new FooModule();
+        bar = new BarModule();
+        kasuri = new Kasuri<typeof State>(State, { foo, bar });
+    });
+
+    it("should request task", async () => {
+        foo.submitTask("additionReq", "bar", "additionTask", [2, 3]);
+        const taskReq = foo.getState("foo", "additionReq");
+        assert.equal(typeof taskReq.id, "string");
+        assert.deepEqual(taskReq.data, [2, 3]);
+    });
+
+    it("should set correct task state", async () => {
+        foo.submitTask("additionReq", "bar", "additionTask", [2, 3], "0");
+        const taskState = foo.getState("bar", "additionTask");
+        await nextCycle();
+        const taskState2 = foo.getState("bar", "additionTask");
+        assert.equal(taskState2.task["0"].status, "success");
+        assert.deepEqual(taskState.task["0"].data, [2, 3]);
+        assert.equal(taskState2.task["0"].result, 5);
+
+    });
+
+    it("should receive task result", async () => {
+        const result = await foo.submitTask("additionReq", "bar", "additionTask", [2, 3]);
+        assert.equal(result, 5);
+    });
+
+    it("should prune old task state", async () => {
+        foo.submitTask("additionReq", "bar", "additionTask", [2, 3], "1");
+        foo.submitTask("additionReq", "bar", "additionTask", [2, 3], "2");
+        foo.submitTask("additionReq", "bar", "additionTask", [2, 3], "3");
+        foo.submitTask("additionReq", "bar", "additionTask", [2, 3], "4");
+        foo.submitTask("additionReq", "bar", "additionTask", [2, 3], "5");
+        foo.submitTask("additionReq", "bar", "additionTask", [2, 3], "6");
+        await nextCycle();
+        const taskState = foo.getState("bar", "additionTask");
+        assert.equal(taskState.stale.length, 5);
+        assert.equal(taskState.task["0"], undefined);
+    });
+});
+
 describe("introspection", () => {
     let server: Server;
     const client = axios.create({

@@ -6,4 +6,5 @@ export default {
     b: { x: 0, y: 0 },
     c: true,
     d: 0,
+    additionTask: Module.taskState<[number, number], number>()
 };

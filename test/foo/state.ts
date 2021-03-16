@@ -1,4 +1,4 @@
-import { Module } from "../../src/kasuri";
+import { Module, TaskRequest } from "../../src/kasuri";
 
 export default {
     ...Module.defaultState,
@@ -6,4 +6,5 @@ export default {
     f: 0,
     g: "",
     h: false,
+    additionReq: null as TaskRequest<[number, number]>
 };
