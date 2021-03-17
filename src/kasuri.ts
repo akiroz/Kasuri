@@ -256,7 +256,13 @@ export class Module<State extends ModuleState, StateMap extends ModuleStateMap> 
     S extends keyof State,
     Data extends TaskReqData<StateMap[M][R]>,
     Result extends TaskStateResult<State[S]>
-    >(mod: M, req: R, stateKey: S, handler: (data: Data) => Promise<Result>, cleanup?: (data: Data) => any) {
+    >(
+        mod: M,
+        req: R,
+        stateKey: S,
+        handler: (data: Data, id: string) => Promise<Result>,
+        cleanup?: (data: Data, id: string) => any
+    ) {
         this.subscribeState(mod, req, async ({ value: { id, data } }: ModuleStateStoreAttr<TaskRequest<Data>>) => {
             this.swapState(stateKey, (({ value: taskState }: ModuleStateStoreAttr<TaskState<Data, Result>>) => {
                 taskState.task[id] = { updateTime: Date.now(), status: "active", data };
@@ -265,12 +271,12 @@ export class Module<State extends ModuleState, StateMap extends ModuleStateMap> 
                     const oldest = taskState.active.shift();
                     taskState.task[oldest].status = "cancelled";
                     taskState.task[oldest].updateTime = Date.now();
-                    if(cleanup) cleanup(taskState.task[oldest].data);
+                    if(cleanup) cleanup(taskState.task[oldest].data, id);
                 }
                 return taskState;
             }) as any);
             try {
-                const result = await handler(data);
+                const result = await handler(data, id);
                 this.swapState(stateKey, (({ value: taskState }: ModuleStateStoreAttr<TaskState<Data, Result>>) => {
                     taskState.task[id] = { updateTime: Date.now(), status: "success", data, result };
                     taskState.active = taskState.active.filter(task => task !== id);
