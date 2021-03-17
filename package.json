@@ -1,6 +1,6 @@
 {
     "name": "@akiroz/kasuri",
-    "version": "0.1.0",
+    "version": "0.1.1",
     "repository": "github:akiroz/kasuri",
     "main": "dist/kasuri.js",
     "types": "dist/kasuri.d.ts",
