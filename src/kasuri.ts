@@ -278,6 +278,10 @@ export class Module<State extends ModuleState, StateMap extends ModuleStateMap> 
                     const oldest = taskState.active.shift();
                     taskState.task[oldest].status = "cancelled";
                     taskState.task[oldest].updateTime = Date.now();
+                    taskState.stale.push(oldest);
+                    while(taskState.stale.length > Math.max(0, taskState.keepStale)) {
+                        delete taskState.task[taskState.stale.shift()];
+                    }
                     if(cleanup) cleanup(taskState.task[oldest].data, id);
                 }
                 return taskState;
