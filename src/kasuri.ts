@@ -55,6 +55,9 @@ export type TaskState<Data, Result> = {
 
 type TaskStateData<T> = T extends TaskState<infer D, infer R> ? D : never;
 type TaskStateResult<T> = T extends TaskState<infer D, infer R> ? R : never;
+function isTaskstateValid(taskState: any): boolean {
+    return !( taskState instanceof Object && ["keepStale", "concurrency", "defaultActive", "stale", "active", "task"].every(key => taskState.hasOwnProperty(key)));
+}
 
 function taskId(): string {
     return randomBytes(4).toString("hex");
@@ -246,7 +249,9 @@ export class Module<State extends ModuleState, StateMap extends ModuleStateMap> 
     >(req: R, mod: M, stateKey: S, data: Data, id: string = taskId()): Promise<Result> {
         this.setState({ [req]: { id, data } } as any);
         while(true) {
-            const { task } = (await this.stateChange(mod, stateKey)).current.value as TaskState<Data2, Result>;
+            const  taskState  = (await this.stateChange(mod, stateKey)).current.value as TaskState<Data2, Result>;
+            if (isTaskstateValid(taskState)) throw Error(`Invalid task state: ${stateKey}, ${taskState}`);
+            const { task } = taskState;
             if (task[id] && task[id].status === "cancelled") throw Error("cancelled");
             if (task[id] && task[id].status === "failed") throw task[id].result;
             if (task[id] && task[id].status === "success") return task[id].result;
@@ -266,8 +271,14 @@ export class Module<State extends ModuleState, StateMap extends ModuleStateMap> 
         handler: (data: Data, id: string) => Promise<Result>,
         cleanup?: (data: Data, id: string) => any
     ) {
-        this.subscribeState(mod, req, async ({ value: { id, data } }: ModuleStateStoreAttr<TaskRequest<Data>>) => {
+        this.subscribeState(mod, req, async ({ value }: ModuleStateStoreAttr<TaskRequest<Data>>) => {
+            if (!value || !value.hasOwnProperty("id") || !value.hasOwnProperty("data")) {
+                console.log(`[Kasuri] Invalid state value: [${mod}:${req}] ${value}`);
+                return;
+            };
+            const { id, data } = value;
             this.swapState(stateKey, (({ value: taskState }: ModuleStateStoreAttr<TaskState<Data, Result>>) => {
+                if (isTaskstateValid(taskState)) throw Error(`Invalid task state: ${stateKey}, ${taskState}`);
                 taskState.task[id] = {
                     updateTime: Date.now(),
                     status: taskState.defaultActive ? "active" : "pending",
@@ -289,6 +300,7 @@ export class Module<State extends ModuleState, StateMap extends ModuleStateMap> 
             try {
                 const result = await handler(data, id);
                 this.swapState(stateKey, (({ value: taskState }: ModuleStateStoreAttr<TaskState<Data, Result>>) => {
+                    if (isTaskstateValid(taskState)) throw Error(`Invalid task state: ${stateKey}, ${taskState}`);
                     taskState.task[id] = { updateTime: Date.now(), status: "success", data, result };
                     taskState.active = taskState.active.filter(task => task !== id);
                     taskState.stale.push(id);
@@ -299,6 +311,7 @@ export class Module<State extends ModuleState, StateMap extends ModuleStateMap> 
                 }) as any);
             } catch(err) {
                 this.swapState(stateKey, (({ value: taskState }: ModuleStateStoreAttr<TaskState<Data, Result>>) => {
+                    if (isTaskstateValid(taskState)) throw Error(`Invalid task state: ${stateKey}, ${taskState}`);
                     taskState.task[id] = {
                         updateTime: Date.now(), status: "failed", data,
                         result: err instanceof Error ? err.message : err,
