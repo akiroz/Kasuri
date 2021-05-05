@@ -5,6 +5,7 @@ import { Kasuri, Introspection, ModuleStateStoreAttr } from "../src/kasuri";
 import State from "./state";
 import FooModule from "./foo/module";
 import BarModule from "./bar/module";
+import { doesNotMatch } from "node:assert";
 
 function nextCycle() {
     return new Promise((r) => setImmediate(r));
@@ -164,6 +165,14 @@ describe("task", () => {
         assert.equal(taskState.stale.length, 5);
         assert.equal(taskState.task["0"], undefined);
     });
+
+    it("should enter pending", async function () {
+        this.timeout(10000);
+        foo.submitTask("defaultPendingReq", "bar", "defaultPendingTask", 1, "1");
+        await nextCycle();
+        const taskState = foo.getState("bar", "defaultPendingTask");
+        assert.equal(taskState.task["1"].status, "pending");
+    })
 });
 
 describe("introspection", () => {

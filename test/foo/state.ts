@@ -6,5 +6,6 @@ export default {
     f: 0,
     g: "",
     h: false,
-    additionReq: null as TaskRequest<[number, number]>
+    additionReq: null as TaskRequest<[number, number]>,
+    defaultPendingReq: null as TaskRequest<number>
 };

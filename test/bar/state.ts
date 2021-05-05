@@ -6,5 +6,6 @@ export default {
     b: { x: 0, y: 0 },
     c: true,
     d: 0,
-    additionTask: Module.taskState<[number, number], number>()
+    additionTask: Module.taskState<[number, number], number>(),
+    defaultPendingTask: Module.taskState<number, number>({ defaultActive: false })
 };
