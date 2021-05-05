@@ -1,6 +1,7 @@
 import { EventEmitter } from "events";
 import { randomBytes } from "crypto";
 import * as _Introspection from "./introspectionServer";
+import { isBoolean } from "util"
 
 export const Introspection = _Introspection;
 
@@ -56,7 +57,7 @@ export type TaskState<Data, Result> = {
 type TaskStateData<T> = T extends TaskState<infer D, infer R> ? D : never;
 type TaskStateResult<T> = T extends TaskState<infer D, infer R> ? R : never;
 function isTaskstateValid(taskState: any): boolean {
-    return !( taskState instanceof Object && ["keepStale", "concurrency", "defaultActive", "stale", "active", "task"].every(key => taskState.hasOwnProperty(key)));
+    return !(taskState instanceof Object && ["keepStale", "concurrency", "defaultActive", "stale", "active", "task"].every(key => taskState.hasOwnProperty(key)));
 }
 
 function taskId(): string {
@@ -175,7 +176,7 @@ export class Kasuri<StateMap extends ModuleStateMap> {
 }
 
 export class Module<State extends ModuleState, StateMap extends ModuleStateMap> extends EventEmitter {
-    
+
     static defaultState: ModuleState = {
         status: "pending",
         statusMessage: "",
@@ -189,13 +190,13 @@ export class Module<State extends ModuleState, StateMap extends ModuleStateMap> 
         return {
             keepStale: config.keepStale || 5,
             concurrency: config.concurrency || Infinity,
-            defaultActive: config.defaultActive || true,
+            defaultActive: isBoolean(config.defaultActive) ? config.defaultActive : true,
             stale: [],
             active: [],
             task: {},
         };
     }
-    
+
     _kasuri: Kasuri<StateMap>;
 
     getState<M extends keyof StateMap, K extends keyof StateMap[M]>(
@@ -240,17 +241,17 @@ export class Module<State extends ModuleState, StateMap extends ModuleStateMap> 
     }
 
     async submitTask<
-    R extends keyof State,
-    M extends keyof StateMap,
-    S extends keyof StateMap[M],
-    Data extends TaskReqData<State[R]>,
-    Data2 extends TaskStateData<StateMap[M][S]>,
-    Result extends TaskStateResult<StateMap[M][S]>
+        R extends keyof State,
+        M extends keyof StateMap,
+        S extends keyof StateMap[M],
+        Data extends TaskReqData<State[R]>,
+        Data2 extends TaskStateData<StateMap[M][S]>,
+        Result extends TaskStateResult<StateMap[M][S]>
     >(req: R, mod: M, stateKey: S, data: Data, id: string = taskId()): Promise<Result> {
         this.setState({ [req]: { id, data } } as any);
-        while(true) {
-            const  taskState  = (await this.stateChange(mod, stateKey)).current.value as TaskState<Data2, Result>;
-            if (isTaskstateValid(taskState)) { 
+        while (true) {
+            const taskState = (await this.stateChange(mod, stateKey)).current.value as TaskState<Data2, Result>;
+            if (isTaskstateValid(taskState)) {
                 console.warn(`Invalid task state: ${stateKey}, ${taskState}`);
             } else {
                 const { task } = taskState;
@@ -262,11 +263,11 @@ export class Module<State extends ModuleState, StateMap extends ModuleStateMap> 
     }
 
     handleTask<
-    M extends keyof StateMap,
-    R extends keyof StateMap[M],
-    S extends keyof State,
-    Data extends TaskReqData<StateMap[M][R]>,
-    Result extends TaskStateResult<State[S]>
+        M extends keyof StateMap,
+        R extends keyof StateMap[M],
+        S extends keyof State,
+        Data extends TaskReqData<StateMap[M][R]>,
+        Result extends TaskStateResult<State[S]>
     >(
         mod: M,
         req: R,
@@ -291,15 +292,15 @@ export class Module<State extends ModuleState, StateMap extends ModuleStateMap> 
                     data,
                 };
                 taskState.active.push(id);
-                while(taskState.active.length > taskState.concurrency) {
+                while (taskState.active.length > taskState.concurrency) {
                     const oldest = taskState.active.shift();
                     taskState.task[oldest].status = "cancelled";
                     taskState.task[oldest].updateTime = Date.now();
                     taskState.stale.push(oldest);
-                    while(taskState.stale.length > Math.max(0, taskState.keepStale)) {
+                    while (taskState.stale.length > Math.max(0, taskState.keepStale)) {
                         delete taskState.task[taskState.stale.shift()];
                     }
-                    if(cleanup) cleanup(taskState.task[oldest].data, id);
+                    if (cleanup) cleanup(taskState.task[oldest].data, id);
                 }
                 return taskState;
             }) as any);
@@ -313,12 +314,12 @@ export class Module<State extends ModuleState, StateMap extends ModuleStateMap> 
                     taskState.task[id] = { updateTime: Date.now(), status: "success", data, result };
                     taskState.active = taskState.active.filter(task => task !== id);
                     taskState.stale.push(id);
-                    while(taskState.stale.length > Math.max(0, taskState.keepStale)) {
+                    while (taskState.stale.length > Math.max(0, taskState.keepStale)) {
                         delete taskState.task[taskState.stale.shift()];
                     }
                     return taskState;
                 }) as any);
-            } catch(err) {
+            } catch (err) {
                 this.swapState(stateKey, (({ value: taskState }: ModuleStateStoreAttr<TaskState<Data, Result>>) => {
                     if (isTaskstateValid(taskState)) {
                         console.warn(`[Kasuri] Invalid task state: ${stateKey}, ${taskState}`);
@@ -330,7 +331,7 @@ export class Module<State extends ModuleState, StateMap extends ModuleStateMap> 
                     };
                     taskState.active = taskState.active.filter(task => task !== id);
                     taskState.stale.push(id);
-                    while(taskState.stale.length > Math.max(0, taskState.keepStale)) {
+                    while (taskState.stale.length > Math.max(0, taskState.keepStale)) {
                         delete taskState.task[taskState.stale.shift()];
                     }
                     return taskState;
