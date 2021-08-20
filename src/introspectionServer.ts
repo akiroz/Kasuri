@@ -82,6 +82,9 @@ export async function server<T extends ModuleStateMap>(config: Config<T>) {
                             res.writeHead(400).end("Invalid params");
                             return;
                         }
+                        res.writeHead(200, {
+                            "Access-Control-Allow-Origin": "*",
+                        });
                         config.kasuri.subscribeState(body.module, body.state, (curr, prev) => {
                             res.write(JSON.stringify({ curr, prev }, config.jsonReplacer) + "\n");
                         });
