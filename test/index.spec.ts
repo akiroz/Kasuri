@@ -5,7 +5,6 @@ import { Kasuri, Introspection, ModuleStateStoreAttr } from "../src/kasuri";
 import State from "./state";
 import FooModule from "./foo/module";
 import BarModule from "./bar/module";
-import { doesNotMatch } from "node:assert";
 
 function nextCycle() {
     return new Promise((r) => setImmediate(r));
@@ -23,7 +22,8 @@ describe("module", () => {
     beforeEach(() => {
         foo = new FooModule();
         bar = new BarModule();
-        kasuri = new Kasuri<typeof State>(State, { foo, bar });
+        const newState = JSON.parse(JSON.stringify(State));
+        kasuri = new Kasuri<typeof State>(newState, { foo, bar });
     });
 
     it("can get/set state own state", async () => {
@@ -109,7 +109,8 @@ describe("kasuri", () => {
     beforeEach(() => {
         foo = new FooModule();
         bar = new BarModule();
-        kasuri = new Kasuri<typeof State>(State, { foo, bar });
+        const newState = JSON.parse(JSON.stringify(State));
+        kasuri = new Kasuri<typeof State>(newState, { foo, bar });
     });
 
     it("should init module on construct", async () => {
@@ -127,7 +128,8 @@ describe("task", () => {
     beforeEach(() => {
         foo = new FooModule();
         bar = new BarModule();
-        kasuri = new Kasuri<typeof State>(State, { foo, bar });
+        const newState = JSON.parse(JSON.stringify(State));
+        kasuri = new Kasuri<typeof State>(newState, { foo, bar });
     });
 
     it("should request task", async () => {
@@ -185,7 +187,8 @@ describe("introspection", () => {
     before(async () => {
         foo = new FooModule();
         bar = new BarModule();
-        kasuri = new Kasuri<typeof State>(State, { foo, bar });
+        const newState = JSON.parse(JSON.stringify(State));
+        kasuri = new Kasuri<typeof State>(newState, { foo, bar });
         server = await Introspection.server({
             kasuri,
             port: 3018,

@@ -42,6 +42,7 @@ export type TaskState<Data, Result> = {
     keepStale: number,
     concurrency: number,
     defaultActive: boolean,
+    requestSources: string[], // "${module}/${requestState}"
     stale: string[],
     active: string[],
     task: {
@@ -82,6 +83,7 @@ export class Kasuri<StateMap extends ModuleStateMap> {
         });
         Object.entries(moduleMap).forEach(([module, moduleObj]: [keyof StateMap, Module<ModuleState, StateMap>]) => {
             moduleObj._kasuri = this;
+            moduleObj.on("getSelf", (cb) => cb(module));
             moduleObj.on("setState", (update) => {
                 Object.entries(update).forEach(([key, value]) => {
                     this.setState(module, key as any, value);
@@ -189,8 +191,9 @@ export class Module<State extends ModuleState, StateMap extends ModuleStateMap> 
     } = {}): TaskState<Data, Result> {
         return {
             keepStale: config.keepStale || 5,
-            concurrency: config.concurrency || Infinity,
+            concurrency: config.concurrency || Number.MAX_SAFE_INTEGER,
             defaultActive: isBoolean(config.defaultActive) ? config.defaultActive : true,
+            requestSources: [],
             stale: [],
             active: [],
             task: {},
@@ -249,6 +252,9 @@ export class Module<State extends ModuleState, StateMap extends ModuleStateMap> 
         Result extends TaskStateResult<StateMap[M][S]>
     >(req: R, mod: M, stateKey: S, data: Data, id: string = taskId()): Promise<Result> {
         this.setState({ [req]: { id, data } } as any);
+        const selfModule = await new Promise<M>(r => this.emit("getSelf", r));
+        const taskState = this.getState(mod, stateKey) as TaskState<Data2, Result>;
+        if(!taskState.requestSources.includes(`${selfModule}/${req}`)) throw Error("not handled");
         while (true) {
             const taskState = (await this.stateChange(mod, stateKey)).current.value as TaskState<Data2, Result>;
             if (isTaskstateValid(taskState)) {
@@ -275,6 +281,15 @@ export class Module<State extends ModuleState, StateMap extends ModuleStateMap> 
         handler: (data: Data, id: string) => Promise<Result>,
         cleanup?: (data: Data, id: string) => any
     ) {
+        this.swapState(stateKey, (({ value: taskState }: ModuleStateStoreAttr<TaskState<Data, Result>>) => {
+            const reqSource = `${mod}/${req}`;
+            if(taskState.requestSources.includes(reqSource)) {
+                console.log(`[Kasuri] Duplicate handler for ${stateKey}(${reqSource})`);
+            } else {
+                taskState.requestSources.push(reqSource);
+            }
+            return taskState;
+        }) as any);
         this.subscribeState(mod, req, async ({ value }: ModuleStateStoreAttr<TaskRequest<Data>>) => {
             if (!value || !value.hasOwnProperty("id") || !value.hasOwnProperty("data")) {
                 console.log(`[Kasuri] Invalid task request: [${mod}:${req}] ${value}`);
