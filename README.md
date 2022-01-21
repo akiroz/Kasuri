@@ -225,3 +225,24 @@ const server = await Introspection.server({ kasuri });
 This server is intended to be used with the CLI tool, see `$ kasuri --help` for details.
 
 ![](screenshot.png)
+
+#### Introspection Extensions
+
+The introspection server supports custom extensons to read, format, and modify the state fabric.
+Extension handlers can be added to the introspections server:
+```
+await Introspection.server({
+    kasuri,
+    extension: {
+        myCustomExt(kasuri, reqBody: Buffer): Buffer {
+            const params = JSON.parse(reqBody.toString());
+            // custom logic here
+        }
+    },
+});
+```
+
+The extension can be invoked CLI, stdin is passed as the request body and the result is piped to stdout.
+```
+$ echo '{"foo": 123}' | kasuri call myCustomExt
+```
