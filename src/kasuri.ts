@@ -1,7 +1,7 @@
 import { EventEmitter } from "events";
 import { randomBytes } from "crypto";
 import * as _Introspection from "./introspectionServer";
-import { isBoolean } from "util"
+import util, { isBoolean } from "util";
 
 export const Introspection = _Introspection;
 
@@ -116,7 +116,7 @@ export class Kasuri<StateMap extends ModuleStateMap> {
                     this.setState(
                         module,
                         "statusMessage",
-                        `Init Error: ${err}` + (err instanceof Error) ? `\n${err.stack}` : ""
+                        `Init Error: ${util.inspect(err)}`
                     );
                 }
             }
