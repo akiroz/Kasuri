@@ -68,7 +68,7 @@ describe("module", () => {
     });
 
     it("should call listener multiple times", async () => {
-        const changes = [];
+        const changes: any[] = [];
         foo.subscribeState("foo", "e", ({ value }, { value: old }) => changes.push({ value, old }));
         foo.swapState("e", ({ value }) => value + 1);
         foo.swapState("e", ({ value }) => value + 1);
@@ -121,6 +121,20 @@ describe("kasuri", () => {
     it("should catch module init errors", async () => {
         await nextCycle();
         assert.equal(kasuri.getState("foo", "status"), "failure");
+    });
+
+    it("can subscribe to state update", async () => {
+        await nextCycle();
+        await nextCycle();
+        const [[mod, key, val]] = await Promise.all([
+            new Promise<[string, string, ModuleStateStoreAttr<string>]>((r) =>
+                kasuri.subscribe((mod, key, val) => (key === "g") && r([mod, key, val]))
+            ),
+            nextCycle().then(() => foo.setState({ g: "update" })),
+        ]);
+        assert.equal(mod, "foo");
+        assert.equal(key, "g");
+        assert.equal(val.value, "update");
     });
 });
 

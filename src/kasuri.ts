@@ -128,7 +128,8 @@ export class Kasuri<StateMap extends ModuleStateMap> {
         const current = { value, updateTime: Date.now() };
         this.store[module][key] = current;
         setImmediate(() => {
-            this.subscription.emit(`${module}.${key}`, { current, previous });
+            this.subscription.emit(`${module as string}.${key as string}`, { current, previous });
+            this.subscription.emit("update", { module, key, current, previous });
         });
     }
 
@@ -158,9 +159,9 @@ export class Kasuri<StateMap extends ModuleStateMap> {
         once = false
     ) {
         if (once) {
-            this.subscription.once(`${module}.${key}`, ({ current, previous }) => listener(current, previous));
+            this.subscription.once(`${module as string}.${key as string}`, ({ current, previous }) => listener(current, previous));
         } else {
-            this.subscription.on(`${module}.${key}`, ({ current, previous }) => listener(current, previous));
+            this.subscription.on(`${module as string}.${key as string}`, ({ current, previous }) => listener(current, previous));
         }
     }
 
@@ -174,6 +175,15 @@ export class Kasuri<StateMap extends ModuleStateMap> {
         return new Promise((rsov) => {
             this.subscribeState(module, key, (current, previous) => rsov({ current, previous }), true);
         });
+    }
+
+    subscribe<M extends keyof StateMap>(listener: (
+        module: M,
+        key: string,
+        current: ModuleStateStoreAttr<any>,
+        previous: ModuleStateStoreAttr<any>
+    ) => void) {
+        this.subscription.on("update", ({ module, key, current, previous }) => listener(module, key, current, previous));
     }
 }
 
@@ -254,11 +264,11 @@ export class Module<State extends ModuleState, StateMap extends ModuleStateMap> 
         this.setState({ [req]: { id, data } } as any);
         const selfModule = await new Promise<M>(r => this.emit("getSelf", r));
         const taskState = this.getState(mod, stateKey) as TaskState<Data2, Result>;
-        if(!taskState.requestSources.includes(`${selfModule}/${req}`)) throw Error("not handled");
+        if(!taskState.requestSources.includes(`${selfModule as string}/${req as string}`)) throw Error("not handled");
         while (true) {
             const taskState = (await this.stateChange(mod, stateKey)).current.value as TaskState<Data2, Result>;
             if (isTaskstateValid(taskState)) {
-                console.warn(`Invalid task state: ${stateKey}, ${taskState}`);
+                console.warn(`Invalid task state: ${stateKey as string}, ${taskState}`);
             } else {
                 const { task } = taskState;
                 if (task[id] && task[id].status === "cancelled") throw Error("cancelled");
@@ -282,23 +292,23 @@ export class Module<State extends ModuleState, StateMap extends ModuleStateMap> 
         cleanup?: (data: Data, id: string) => any
     ) {
         this.swapState(stateKey, (({ value: taskState }: ModuleStateStoreAttr<TaskState<Data, Result>>) => {
-            const reqSource = `${mod}/${req}`;
+            const reqSource = `${mod as string}/${req as string}`;
             if(taskState.requestSources.includes(reqSource)) {
-                console.log(`[Kasuri] Duplicate handler for ${stateKey}(${reqSource})`);
+                console.log(`[Kasuri] Duplicate handler for ${stateKey as string}(${reqSource})`);
             } else {
                 taskState.requestSources.push(reqSource);
             }
             return taskState;
         }) as any);
-        this.subscribeState(mod, req, async ({ value }: ModuleStateStoreAttr<TaskRequest<Data>>) => {
+        this.subscribeState(mod, req, (async ({ value }: ModuleStateStoreAttr<TaskRequest<Data>>) => {
             if (!value || !value.hasOwnProperty("id") || !value.hasOwnProperty("data")) {
-                console.log(`[Kasuri] Invalid task request: [${mod}:${req}] ${value}`);
+                console.log(`[Kasuri] Invalid task request: [${mod as string}:${req as string}] ${value}`);
                 return;
             };
             const { id, data } = value;
             this.swapState(stateKey, (({ value: taskState }: ModuleStateStoreAttr<TaskState<Data, Result>>) => {
                 if (isTaskstateValid(taskState)) {
-                    console.warn(`[Kasuri] Invalid task state: ${stateKey}, ${taskState}`);
+                    console.warn(`[Kasuri] Invalid task state: ${stateKey as string}, ${taskState}`);
                     return taskState;
                 };
                 taskState.task[id] = {
@@ -323,7 +333,7 @@ export class Module<State extends ModuleState, StateMap extends ModuleStateMap> 
                 const result = await handler(data, id);
                 this.swapState(stateKey, (({ value: taskState }: ModuleStateStoreAttr<TaskState<Data, Result>>) => {
                     if (isTaskstateValid(taskState)) {
-                        console.warn(`[Kasuri] Invalid task state: ${stateKey}, ${taskState}`);
+                        console.warn(`[Kasuri] Invalid task state: ${stateKey as string}, ${taskState}`);
                         return taskState;
                     };
                     taskState.task[id] = { updateTime: Date.now(), status: "success", data, result };
@@ -337,7 +347,7 @@ export class Module<State extends ModuleState, StateMap extends ModuleStateMap> 
             } catch (err) {
                 this.swapState(stateKey, (({ value: taskState }: ModuleStateStoreAttr<TaskState<Data, Result>>) => {
                     if (isTaskstateValid(taskState)) {
-                        console.warn(`[Kasuri] Invalid task state: ${stateKey}, ${taskState}`);
+                        console.warn(`[Kasuri] Invalid task state: ${stateKey as string}, ${taskState}`);
                         return taskState;
                     };
                     taskState.task[id] = {
@@ -352,7 +362,7 @@ export class Module<State extends ModuleState, StateMap extends ModuleStateMap> 
                     return taskState;
                 }) as any);
             }
-        });
+        }) as any);
     }
 
     async init() {
