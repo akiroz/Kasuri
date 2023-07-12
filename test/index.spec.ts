@@ -48,6 +48,15 @@ describe("module", () => {
         assert.equal(current.value, "update");
     });
 
+    it("can cancel state change promise", async () => {
+        // Make sure nodejs doesn't print listener leak warning
+        for(let i = 0; i < kasuri.subscription.getMaxListeners() + 1; i++) {
+            const p = foo.stateChange("foo", "g");
+            p.cancel();
+            await nextCycle();
+        }
+    });
+
     it("can get state last update time", async () => {
         let updateTime = foo.getUpdateTime("foo", "g");
         assert.equal(updateTime, 0);

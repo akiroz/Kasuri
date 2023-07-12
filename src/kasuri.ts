@@ -1,8 +1,10 @@
 import { EventEmitter } from "events";
 import { randomBytes } from "crypto";
-import * as _Introspection from "./introspectionServer";
-import util, { isBoolean } from "util";
+import util from "util";
+import Bluebird from "bluebird";
+Bluebird.config({ cancellation: true });
 
+import * as _Introspection from "./introspectionServer";
 export const Introspection = _Introspection;
 
 export type ModuleState = {
@@ -72,6 +74,7 @@ export class Kasuri<StateMap extends ModuleStateMap> {
 
     constructor(stateMap: StateMap, moduleMap: ModuleMap<StateMap>) {
         this.module = moduleMap;
+        this.subscription.setMaxListeners(100);
         Object.entries(stateMap).forEach(([module, defaultState]: [keyof StateMap, ModuleState]) => {
             this.store[module] = {} as any;
             Object.entries(defaultState).forEach(([key, defaultValue]) => {
@@ -157,23 +160,23 @@ export class Kasuri<StateMap extends ModuleStateMap> {
             previous: ModuleStateStoreAttr<StateMap[M][K]>
         ) => void,
         once = false
-    ) {
-        if (once) {
-            this.subscription.once(`${module as string}.${key as string}`, ({ current, previous }) => listener(current, previous));
-        } else {
-            this.subscription.on(`${module as string}.${key as string}`, ({ current, previous }) => listener(current, previous));
-        }
+    ): () => void {
+        const k = `${module as string}.${key as string}`;
+        const h = ({ current, previous }) => listener(current, previous);
+        if (once) this.subscription.once(k, h);
+        else this.subscription.on(k, h);
+        return () => this.subscription.removeListener(k, h);
     }
 
     stateChange<M extends keyof StateMap, K extends keyof StateMap[M]>(
         module: M,
         key: K
-    ): Promise<{
+    ): Bluebird<{
         current: ModuleStateStoreAttr<StateMap[M][K]>;
         previous: ModuleStateStoreAttr<StateMap[M][K]>;
     }> {
-        return new Promise((rsov) => {
-            this.subscribeState(module, key, (current, previous) => rsov({ current, previous }), true);
+        return new Bluebird((rsov, rjct, onCancel) => {
+            onCancel(this.subscribeState(module, key, (current, previous) => rsov({ current, previous }), true));
         });
     }
 
@@ -202,7 +205,7 @@ export class Module<State extends ModuleState, StateMap extends ModuleStateMap> 
         return {
             keepStale: config.keepStale || 5,
             concurrency: config.concurrency || Number.MAX_SAFE_INTEGER,
-            defaultActive: isBoolean(config.defaultActive) ? config.defaultActive : true,
+            defaultActive: (typeof config.defaultActive === "boolean")? config.defaultActive : true,
             requestSources: [],
             stale: [],
             active: [],
@@ -238,7 +241,7 @@ export class Module<State extends ModuleState, StateMap extends ModuleStateMap> 
     stateChange<M extends keyof StateMap, K extends keyof StateMap[M]>(
         module: M,
         key: K
-    ): Promise<{
+    ): Bluebird<{
         current: ModuleStateStoreAttr<StateMap[M][K]>;
         previous: ModuleStateStoreAttr<StateMap[M][K]>;
     }> {
