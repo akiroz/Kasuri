@@ -96,7 +96,7 @@ describe("module", () => {
             ),
             timeout(12).then(() => foo.setState({ g: "update" })),
         ]);
-        const delay = Date.now() - val.updateTime;
+        const delay = Kasuri.now() - val.updateTime;
         assert(delay < 10, `Delay: ${delay} not < 10`);
     });
 

@@ -72,6 +72,10 @@ export class Kasuri<StateMap extends ModuleStateMap> {
     module: ModuleMap<StateMap>;
     subscription = new EventEmitter();
 
+    static now(): number {
+        return Number(process.hrtime.bigint() / BigInt(1000000));
+    }
+
     constructor(stateMap: StateMap, moduleMap: ModuleMap<StateMap>) {
         this.module = moduleMap;
         this.subscription.setMaxListeners(100);
@@ -128,7 +132,7 @@ export class Kasuri<StateMap extends ModuleStateMap> {
 
     setState<M extends keyof StateMap, K extends keyof StateMap[M]>(module: M, key: K, value: StateMap[M][K]) {
         const previous = this.store[module][key];
-        const current = { value, updateTime: Date.now() };
+        const current = { value, updateTime: Kasuri.now() };
         this.store[module][key] = current;
         setImmediate(() => {
             this.subscription.emit(`${module as string}.${key as string}`, { current, previous });
@@ -143,7 +147,7 @@ export class Kasuri<StateMap extends ModuleStateMap> {
     ): StateMap[M][K] {
         const { value, updateTime } = this.store[module][key];
         if (Number.isFinite(staleMs)) {
-            return updateTime > Date.now() - staleMs ? value : undefined;
+            return updateTime > Kasuri.now() - staleMs ? value : undefined;
         }
         return value;
     }
@@ -315,7 +319,7 @@ export class Module<State extends ModuleState, StateMap extends ModuleStateMap> 
                     return taskState;
                 };
                 taskState.task[id] = {
-                    updateTime: Date.now(),
+                    updateTime: Kasuri.now(),
                     status: taskState.defaultActive ? "active" : "pending",
                     data,
                 };
@@ -323,7 +327,7 @@ export class Module<State extends ModuleState, StateMap extends ModuleStateMap> 
                 while (taskState.active.length > taskState.concurrency) {
                     const oldest = taskState.active.shift();
                     taskState.task[oldest].status = "cancelled";
-                    taskState.task[oldest].updateTime = Date.now();
+                    taskState.task[oldest].updateTime = Kasuri.now();
                     taskState.stale.push(oldest);
                     while (taskState.stale.length > Math.max(0, taskState.keepStale)) {
                         delete taskState.task[taskState.stale.shift()];
@@ -339,7 +343,7 @@ export class Module<State extends ModuleState, StateMap extends ModuleStateMap> 
                         console.warn(`[Kasuri] Invalid task state: ${stateKey as string}, ${taskState}`);
                         return taskState;
                     };
-                    taskState.task[id] = { updateTime: Date.now(), status: "success", data, result };
+                    taskState.task[id] = { updateTime: Kasuri.now(), status: "success", data, result };
                     taskState.active = taskState.active.filter(task => task !== id);
                     taskState.stale.push(id);
                     while (taskState.stale.length > Math.max(0, taskState.keepStale)) {
@@ -354,7 +358,7 @@ export class Module<State extends ModuleState, StateMap extends ModuleStateMap> 
                         return taskState;
                     };
                     taskState.task[id] = {
-                        updateTime: Date.now(), status: "failed", data,
+                        updateTime: Kasuri.now(), status: "failed", data,
                         result: err instanceof Error ? err.message : err,
                     };
                     taskState.active = taskState.active.filter(task => task !== id);
