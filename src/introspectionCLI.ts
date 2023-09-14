@@ -8,33 +8,37 @@ import { ArgumentParser } from "argparse";
 import { SubscribeStream, desia } from "./utils";
 
 const argParse = new ArgumentParser({
-    addHelp: true,
+    add_help: true,
     description: "Kasuri introspection command-line client",
 });
-argParse.addArgument(["-s", "--server"], {
+argParse.add_argument("-s", "--server", {
     metavar: "<host>:<port>",
-    defaultValue: process.env["KASURI_SERVER"] || "localhost:3018",
+    default: process.env["KASURI_SERVER"] || "localhost:3018",
     help: "Kasuri introspection server (default: localhost:3018)",
 });
-argParse.addArgument(["-a", "--auth"], {
+argParse.add_argument("-a", "--auth", {
     metavar: "<username>:<password>",
-    defaultValue: process.env["KASURI_AUTH"],
+    default: process.env["KASURI_AUTH"],
     help: "Kasuri server basic auth",
 });
-const subParse = argParse.addSubparsers({ dest: "command" });
-subParse.addParser("status");
-subParse.addParser("dump-all");
-const cmdDump = subParse.addParser("dump");
-cmdDump.addArgument("module", { help: "Module name" });
-cmdDump.addArgument("state", { help: "State name", required: false });
-const cmdSet = subParse.addParser("set");
-cmdSet.addArgument("module", { help: "Module name" });
-cmdSet.addArgument("update", { help: "JS Object notation (e.g. '{ foo: 1 }')" });
-const cmdSub = subParse.addParser("subscribe");
-cmdSub.addArgument("module", { help: "Module name" });
-cmdSub.addArgument("state", { help: "State name" });
-const cmdCall = subParse.addParser("call");
-cmdCall.addArgument("extension", { help: "Extension name" });
+const subParse = argParse.add_subparsers({ dest: "command" });
+subParse.add_parser("status");
+subParse.add_parser("dump-all");
+
+const cmdDump = subParse.add_parser("dump");
+cmdDump.add_argument("module", { help: "Module name" });
+cmdDump.add_argument("state", { help: "State name", nargs: "?" });
+
+const cmdSet = subParse.add_parser("set");
+cmdSet.add_argument("module", { help: "Module name" });
+cmdSet.add_argument("update", { help: "JS Object notation (e.g. '{ foo: 1 }')" });
+
+const cmdSub = subParse.add_parser("subscribe");
+cmdSub.add_argument("module", { help: "Module name" });
+cmdSub.add_argument("state", { help: "State name" });
+
+const cmdCall = subParse.add_parser("call");
+cmdCall.add_argument("extension", { help: "Extension name" });
 
 function basicAuthHeader(credential) {
     if (!credential) return {};
@@ -66,7 +70,7 @@ function request(server, auth, path, data = {}) {
 }
 
 (async function main() {
-    const args = argParse.parseArgs();
+    const args = argParse.parse_args();
 
     if (args.command === "status") {
         const moduleList = (await request(args.server, args.auth, "/status")) as [string, string, string][];

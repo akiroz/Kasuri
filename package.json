@@ -34,8 +34,8 @@
         }
     },
     "dependencies": {
-        "@types/argparse": "^1.0.38",
-        "argparse": "^1.0.10",
+        "@types/argparse": "^2.0.10",
+        "argparse": "^2.0.1",
         "bluebird": "^3.7.2",
         "chalk": "^4.1.0",
         "sializer": "^0.3.0"
