@@ -1,6 +1,6 @@
 {
     "compilerOptions": {
-        "lib": ["es2018", "esnext.bigint"],
+        "lib": ["ES2020"],
         "esModuleInterop": true,
         "downlevelIteration": true,
         "declaration": true,
