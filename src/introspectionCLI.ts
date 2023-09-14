@@ -1,9 +1,11 @@
 import http from "http";
 import { inspect } from "util";
 import { URL } from "url";
-import { ArgumentParser } from "argparse";
-import split2 from "split2";
+
 import chalk from "chalk";
+import { ArgumentParser } from "argparse";
+
+import { SubscribeStream, desia } from "./utils";
 
 const argParse = new ArgumentParser({
     addHelp: true,
@@ -24,6 +26,7 @@ subParse.addParser("status");
 subParse.addParser("dump-all");
 const cmdDump = subParse.addParser("dump");
 cmdDump.addArgument("module", { help: "Module name" });
+cmdDump.addArgument("state", { help: "State name", required: false });
 const cmdSet = subParse.addParser("set");
 cmdSet.addArgument("module", { help: "Module name" });
 cmdSet.addArgument("update", { help: "JS Object notation (e.g. '{ foo: 1 }')" });
@@ -49,14 +52,13 @@ function request(server, auth, path, data = {}) {
             },
             (res) => {
                 const data = [];
-                res.setEncoding("utf8");
                 res.on("data", (chunk) => data.push(chunk));
                 res.on("end", () => {
                     if (res.statusCode === 200) {
-                        rsov(JSON.parse(data.join("")));
+                        rsov(desia.deserialize(Buffer.concat(data)));
                         return;
                     }
-                    rjct(Error(`${res.statusCode} ${data.join("")}`));
+                    rjct(Error(`${res.statusCode} ${Buffer.concat(data).toString("utf8")}`));
                 });
             }
         ).end(JSON.stringify(data));
@@ -88,7 +90,10 @@ function request(server, auth, path, data = {}) {
     }
 
     if (args.command === "dump") {
-        const state = await request(args.server, args.auth, "/dumpState", { module: args.module });
+        const state = await request(args.server, args.auth, "/dumpState", {
+            module: args.module,
+            state: args.state,
+        });
         console.log(inspect(state, { depth: null, colors: true }));
     }
 
@@ -110,14 +115,9 @@ function request(server, auth, path, data = {}) {
                 headers: basicAuthHeader(args.auth),
             },
             (res) => {
-                res.setEncoding("utf8");
-                res.pipe(split2()).on("data", (msg) => {
-                    const { curr, prev } = JSON.parse(msg);
-                    console.log(
-                        new Date(curr.updateTime).toLocaleString("en-GB") +
-                            " " +
-                            inspect(curr.value, { depth: null, colors: true })
-                    );
+                res.pipe(new SubscribeStream()).on("data", (msg) => {
+                    const { curr } = desia.deserialize<any>(msg);
+                    console.log(`${curr.updateTime/1000} ${inspect(curr.value, { depth: null, colors: true })}`);
                 });
             }
         ).end(JSON.stringify({ module: args.module, state: args.state }));

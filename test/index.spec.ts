@@ -1,10 +1,13 @@
 import { strict as assert } from "assert";
 import { Server } from "http";
 import axios from "axios";
+
 import { Kasuri, Introspection, ModuleStateStoreAttr } from "../src/kasuri";
+import { SubscribeStream, desia } from "../src/utils";
 import State from "./state";
 import FooModule from "./foo/module";
 import BarModule from "./bar/module";
+
 
 function nextCycle() {
     return new Promise((r) => setImmediate(r));
@@ -228,9 +231,34 @@ describe("introspection", () => {
         server.close();
     });
 
-    it("can dump state", async () => {
-        const { data: state } = await client.post("/dumpState");
+    it("can dump all", async () => {
+        const { data: state } = await client.post("/dumpState", {}, {
+            responseType: "arraybuffer",
+            transformResponse: (data) => desia.deserialize(data),
+        });
         assert.equal(state.foo.e.value, 0);
+        assert.equal(state.bar.d.value, 0);
+    });
+
+    it("can dump module", async () => {
+        const { data: foo } = await client.post("/dumpState", {
+            module: "foo"
+        }, {
+            responseType: "arraybuffer",
+            transformResponse: (data) => desia.deserialize(data),
+        });
+        assert.equal(foo.e.value, 0);
+    });
+
+    it("can dump module state", async () => {
+        const { data: e } = await client.post("/dumpState", {
+            module: "foo",
+            state: "e"
+        }, {
+            responseType: "arraybuffer",
+            transformResponse: (data) => desia.deserialize(data),
+        });
+        assert.equal(e.value, 0);
     });
 
     it("can set state", async () => {
@@ -238,9 +266,29 @@ describe("introspection", () => {
             module: "foo",
             update: { f: 1, g: false },
         });
-        const { data: state } = await client.post("/dumpState");
+        const { data: state } = await client.post("/dumpState", {}, {
+            responseType: "arraybuffer",
+            transformResponse: (data) => desia.deserialize(data),
+        });
         assert.equal(state.foo.f.value, 1);
         assert.equal(state.foo.g.value, false);
+    });
+
+    it("can subscribe state", async () => {
+        const { data: sub } = await client.post("/subscribeState", {
+            module: "foo",
+            state: "e"
+        }, {
+            responseType: "stream"
+        });
+        sub.pipe(new SubscribeStream()).on("data", (data) => console.log(desia.deserialize(data)));
+        client.post("/setState", { module: "foo", update: { e: 1 } });
+        await timeout(100);
+        client.post("/setState", { module: "foo", update: { e: 2 } });
+        await timeout(100);
+        client.post("/setState", { module: "foo", update: { e: 3 } });
+        await timeout(100);
+        sub.destroy();
     });
 
     it("can call extensions", async () => {

@@ -1,13 +1,14 @@
 import http from "http";
 import { Kasuri, ModuleStateMap } from "./kasuri";
 import { AddressInfo } from "net";
+import { ConstructorFactory, Sia, constructors as builtinConstructors } from "sializer";
 
 interface Config<T extends ModuleStateMap> {
     kasuri: Kasuri<T>;
     port?: number;
-    jsonReplacer?: (key, value) => any;
     extension?: { [name: string]: (kasuri: Kasuri<T>, req: Buffer) => Promise<Buffer> };
     basicAuth?: string;
+    constructors?: Array<ConstructorFactory<any, any>>;
 }
 
 function isLocal(req: http.IncomingMessage): boolean {
@@ -16,6 +17,12 @@ function isLocal(req: http.IncomingMessage): boolean {
 }
 
 export async function server<T extends ModuleStateMap>(config: Config<T>) {
+    const sia = new Sia({
+        constructors: [
+            ...builtinConstructors,
+            ...(config.constructors || []),
+        ]
+    });
     const server = http.createServer((req, res) => {
         if (config.basicAuth && !isLocal(req)) {
             const auth = Buffer.from(config.basicAuth).toString("base64");
@@ -52,14 +59,13 @@ export async function server<T extends ModuleStateMap>(config: Config<T>) {
                     res.writeHead(400).end("Invalid extension\n");
                 }
             } else {
-                const json = Buffer.concat(data).toString("utf8");
-                const body = JSON.parse(json || "{}");
+                const body = JSON.parse(Buffer.concat(data).toString("utf8") || "{}");
                 switch (req.url) {
                     case "/status":
                         res.writeHead(200, {
                             "Access-Control-Allow-Origin": "*",
                         }).end(
-                            JSON.stringify(
+                            sia.serialize(
                                 Object.keys(config.kasuri.store).map((module) => {
                                     const { status, statusMessage } = config.kasuri.store[module];
                                     return [module, status.value, statusMessage.value];
@@ -71,9 +77,10 @@ export async function server<T extends ModuleStateMap>(config: Config<T>) {
                         res.writeHead(200, {
                             "Access-Control-Allow-Origin": "*",
                         }).end(
-                            JSON.stringify(
-                                body.module ? config.kasuri.store[body.module] : config.kasuri.store,
-                                config.jsonReplacer
+                            sia.serialize(
+                                (body.module && body.state) ? config.kasuri.store[body.module][body.state] :
+                                body.module ? config.kasuri.store[body.module] :
+                                config.kasuri.store
                             )
                         );
                         break;
@@ -85,9 +92,14 @@ export async function server<T extends ModuleStateMap>(config: Config<T>) {
                         res.writeHead(200, {
                             "Access-Control-Allow-Origin": "*",
                         });
-                        config.kasuri.subscribeState(body.module, body.state, (curr, prev) => {
-                            res.write(JSON.stringify({ curr, prev }, config.jsonReplacer) + "\n");
+                        res.write(Buffer.alloc(4)); // Unblock axios stream client
+                        const cleanup = config.kasuri.subscribeState(body.module, body.state, (curr, prev) => {
+                            const payload = sia.serialize({ curr, prev });
+                            const lenHdr = Buffer.alloc(4);
+                            lenHdr.writeUInt32LE(payload.length, 0);
+                            res.write(Buffer.concat([lenHdr, payload]));
                         });
+                        res.once("close", cleanup);
                         break;
                     case "/setState":
                         if (!(body.module && body.update)) {
@@ -97,7 +109,7 @@ export async function server<T extends ModuleStateMap>(config: Config<T>) {
                         Object.entries(body.update).forEach(([k, v]) => {
                             config.kasuri.setState(body.module, k as any, v);
                         });
-                        res.end(JSON.stringify({ result: "ok" }));
+                        res.end(sia.serialize({ result: "ok" }));
                         break;
                     default:
                         res.writeHead(400).end("Invalid path");
