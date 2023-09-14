@@ -8,7 +8,7 @@ export const desia = new DeSia({
         {
             constructor: None,
             code: 0,
-            args: (x) => x,
+            args: (x) => [x],
             build: (x) => x,
         }
     ]
